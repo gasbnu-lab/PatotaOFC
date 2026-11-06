@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { supabase } from "../lib/supabase"
+import Logo from "../components/Logo"
 import styles from "./Publica.module.css"
 
 type Patota = { id: string; nome: string }
@@ -198,10 +199,9 @@ export default function Publica() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <div className={styles.logoBox}>P</div>
+          <Logo size={80} />
           <div className={styles.headerTextos}>
-            <div className={styles.appNome}>PATOTAOFC</div>
-            <div className={styles.nomeTime}>{patota?.nome ?? "Carregando..."}</div>
+            <div className={styles.nomeTime}>{patota?.nome ?? ""}</div>
           </div>
           <div className={styles.headerAcoes}>
             <button
