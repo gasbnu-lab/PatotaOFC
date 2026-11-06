@@ -14,6 +14,7 @@ const NAV = [
   { path: "/admin/churrascos", label: "Churrascos", icon: "🥩" },
   { path: "/admin/financeiro", label: "Financeiro", icon: "📋" },
   { path: "/admin/config", label: "Config. patota", icon: "⚙️" },
+  { path: "/admin/perfil", label: "Meu perfil", icon: "👤" },
 ]
 
 export default function AdminLayout() {

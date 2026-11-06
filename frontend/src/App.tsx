@@ -10,6 +10,7 @@ import Jogadores from "./pages/admin/Jogadores"
 import Jogos from "./pages/admin/Jogos"
 import Mensalidades from "./pages/admin/Mensalidades"
 import { SorteioPage, ConvidadosPage, ChurrascosPage, FinanceiroPage, ConfigPage } from "./pages/admin/Stub"
+import Perfil from "./pages/admin/Perfil"
 import { useAuth } from "./lib/useAuth"
 
 function AuthRedirect() {
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="churrascos" element={<ChurrascosPage />} />
           <Route path="financeiro" element={<FinanceiroPage />} />
           <Route path="config" element={<ConfigPage />} />
+          <Route path="perfil" element={<Perfil />} />
         </Route>
       </Routes>
     </>
