@@ -123,21 +123,17 @@ export default function Login() {
         .select("id", { count: "exact", head: true })
         .eq("patota_id", pid)
 
-      const role = (count ?? 0) === 0 ? "admin" : "membro"
-      const status = role === "admin" ? "aprovado" : "pendente"
-
       const { error } = await supabase.from("usuarios").insert({
         id: session.user.id,
         patota_id: pid,
         nome: nomeConfirmado || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "",
         email: emailConfirmado || session.user.email,
-        role,
-        status,
+        role: "membro",
+        status: "pendente",
       })
       if (error) throw error
 
-      if (role === "admin") navigate("/admin")
-      else navigate("/aguardando")
+      navigate("/aguardando")
     } catch (err: unknown) {
       setErro((err as { message?: string }).message ?? "Erro ao finalizar cadastro.")
       setCarregando(false)
