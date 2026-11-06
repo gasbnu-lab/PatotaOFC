@@ -153,19 +153,25 @@ export default function Mensalidades() {
       return
     }
 
+    const patoId = usuario.patota_id
     const rows = novos.map(j => ({
       jogador_id: j.id,
       mes_ref: recMes,
       pago: false,
       valor: valorPadrao ?? null,
-      patota_id: usuario.patota_id,
+      patota_id: patoId,
     }))
 
-    await supabase.from("mensalidades").insert(rows)
+    const { error } = await supabase.from("mensalidades").insert(rows)
+    if (error) {
+      setMsgRec(`Erro ao gerar: ${error.message}`)
+      setGerando(false)
+      return
+    }
     const isentosCount = jogadores.filter(j => j.isento).length
     setMsgRec(`${novos.length} mensalidade(s) gerada(s) para ${mesNome(recMes)}${isentosCount > 0 ? ` (${isentosCount} isento(s) ignorado(s))` : ""}.`)
     setGerando(false)
-    if (usuario?.patota_id) await carregar(usuario.patota_id)
+    await carregar(patoId)
   }
 
   const meses = [...new Set(mens.map(m => m.mes_ref))].sort().reverse()
