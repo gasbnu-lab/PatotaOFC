@@ -91,19 +91,30 @@ export default function Mensalidades() {
     const novoEstado = !m.pago
     await supabase.from("mensalidades").update({ pago: novoEstado }).eq("id", m.id)
 
-    // Ao marcar pago: inserir lançamento de entrada no financeiro
-    if (novoEstado && usuario?.patota_id) {
-      const valor = m.valor ?? valorPadrao ?? 0
-      if (valor > 0) {
-        const mesStr = mesNome(m.mes_ref)
-        const nomeJog = m.jogadores?.nome ?? "Jogador"
-        await supabase.from("lancamentos").insert({
-          tipo: "entrada",
-          valor,
-          descricao: `Mensalidade ${mesStr} — ${nomeJog}`,
-          data: new Date().toISOString().split("T")[0],
-          patota_id: usuario.patota_id,
-        })
+    const mesStr = mesNome(m.mes_ref)
+    const nomeJog = m.jogadores?.nome ?? "Jogador"
+    const descricao = `Mensalidade ${mesStr} — ${nomeJog}`
+
+    if (usuario?.patota_id) {
+      if (novoEstado) {
+        // Marcar pago: inserir lançamento de entrada
+        const valor = m.valor ?? valorPadrao ?? 0
+        if (valor > 0) {
+          await supabase.from("lancamentos").insert({
+            tipo: "entrada",
+            valor,
+            descricao,
+            data: new Date().toISOString().split("T")[0],
+            patota_id: usuario.patota_id,
+          })
+        }
+      } else {
+        // Desmarcar pago: remover lançamento correspondente
+        await supabase.from("lancamentos")
+          .delete()
+          .eq("patota_id", usuario.patota_id)
+          .eq("descricao", descricao)
+          .eq("tipo", "entrada")
       }
     }
 
