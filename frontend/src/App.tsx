@@ -9,7 +9,8 @@ import Dashboard from "./pages/admin/Dashboard"
 import Jogadores from "./pages/admin/Jogadores"
 import Jogos from "./pages/admin/Jogos"
 import Mensalidades from "./pages/admin/Mensalidades"
-import { ConvidadosPage, ChurrascosPage, FinanceiroPage } from "./pages/admin/Stub"
+import { ConvidadosPage, ChurrascosPage } from "./pages/admin/Stub"
+import Financeiro from "./pages/admin/Financeiro"
 import Config from "./pages/admin/Config"
 import Perfil from "./pages/admin/Perfil"
 import Sorteio from "./pages/admin/Sorteio"
@@ -68,7 +69,7 @@ export default function App() {
           <Route path="convidados" element={<ConvidadosPage />} />
           <Route path="mensalidades" element={<Mensalidades />} />
           <Route path="churrascos" element={<ChurrascosPage />} />
-          <Route path="financeiro" element={<FinanceiroPage />} />
+          <Route path="financeiro" element={<Financeiro />} />
           <Route path="config" element={<Config />} />
           <Route path="perfil" element={<Perfil />} />
         </Route>

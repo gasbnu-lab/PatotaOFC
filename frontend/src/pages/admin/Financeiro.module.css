@@ -1,0 +1,216 @@
+.btnNovo {
+  padding: 0.55rem 1.1rem;
+  background: #FFD600;
+  color: #111;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.btnNovo:hover { opacity: 0.85; }
+
+/* Form */
+.formCard {
+  background: var(--surface);
+  border: 1px solid #FFD600;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.formTitulo { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; }
+.form { display: flex; flex-direction: column; gap: 0.75rem; }
+.formRow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+@media (max-width: 600px) { .formRow { grid-template-columns: 1fr 1fr; } }
+.label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text2); margin-bottom: 0.25rem; }
+.select, .input, .inputFull {
+  width: 100%;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  background: var(--surface2);
+  color: var(--text);
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.select:focus, .input:focus, .inputFull:focus { outline: none; border-color: #FFD600; }
+.btnSalvar {
+  align-self: flex-start;
+  padding: 0.55rem 1.3rem;
+  background: #111;
+  color: #FFD600;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btnSalvar:disabled { opacity: 0.4; cursor: not-allowed; }
+.erro { font-size: 0.82rem; color: #dc2626; }
+
+/* Saldo */
+.saldoGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 600px) { .saldoGrid { grid-template-columns: 1fr 1fr; } }
+.saldoCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+.saldoTotal {
+  background: #111;
+  border-color: #111;
+}
+:global([data-theme="dark"]) .saldoTotal {
+  background: #FFD600;
+  border-color: #FFD600;
+}
+.saldoLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.saldoTotal .saldoLabel { color: #888; }
+:global([data-theme="dark"]) .saldoTotal .saldoLabel { color: #554e00; }
+.saldoValor {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-top: 0.25rem;
+}
+.saldoTotal .saldoValor { color: #FFD600; }
+:global([data-theme="dark"]) .saldoTotal .saldoValor { color: #111; }
+
+/* Mensalidades */
+.section { margin-bottom: 1.5rem; }
+.sectionTitulo {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.mensGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+.mensCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+.mensNum { font-size: 1.75rem; font-weight: 800; color: var(--text); }
+.mensLabel { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+.mensValor { font-size: 0.82rem; font-weight: 600; color: var(--text2); margin-top: 0.4rem; }
+
+/* Gráfico */
+.graficoCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+.graficoLegenda { display: flex; gap: 1rem; font-size: 0.78rem; margin-bottom: 1rem; }
+.legVerde { color: #16a34a; }
+.legVermelho { color: #dc2626; }
+.barras {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 100px;
+}
+.barraGrupo { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.barrasCol { display: flex; align-items: flex-end; gap: 3px; height: 80px; width: 100%; }
+.barra { flex: 1; border-radius: 3px 3px 0 0; min-height: 2px; transition: height 0.3s; }
+.barraMes { font-size: 0.72rem; color: var(--muted); }
+
+/* Filtros */
+.filtros { display: flex; gap: 0.4rem; }
+.filtroBtn {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filtroBtnAtivo {
+  background: #FFD600;
+  color: #111;
+  border-color: #FFD600;
+  font-weight: 700;
+}
+
+/* Extrato */
+.extrato {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.extratoRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+.extratoRow:last-child { border-bottom: none; }
+.extratoTipo {
+  font-size: 1rem;
+  font-weight: 800;
+  min-width: 20px;
+  text-align: center;
+}
+.extratoInfo { flex: 1; min-width: 0; }
+.extratoDesc {
+  font-size: 0.88rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.extratoData { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
+.extratoValor { font-size: 0.9rem; font-weight: 700; white-space: nowrap; }
+
+/* Colors */
+.verde { color: #16a34a; }
+.vermelho { color: #dc2626; }
+.warning { color: #d97706; }
+
+.vazio { color: var(--muted); font-size: 0.88rem; padding: 1.5rem; text-align: center; }
+
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: #FFD600;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 3rem auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
