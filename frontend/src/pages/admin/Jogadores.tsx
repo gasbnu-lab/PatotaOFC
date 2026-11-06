@@ -10,16 +10,17 @@ type Jogador = {
   posicao: string | null
   nota: number | null
   ativo: boolean
+  isento: boolean
 }
 
-type Form = { nome: string; email: string; posicao: string; nota: string }
+type Form = { nome: string; email: string; posicao: string; nota: string; isento: boolean }
 
 function iniciais(nome: string) {
   const p = nome.split(" ")
   return (p[0][0] + (p[1]?.[0] ?? "")).toUpperCase()
 }
 
-const FORM_VAZIO: Form = { nome: "", email: "", posicao: "qualquer", nota: "5" }
+const FORM_VAZIO: Form = { nome: "", email: "", posicao: "qualquer", nota: "5", isento: false }
 
 export default function Jogadores() {
   const { usuario } = useAuth()
@@ -54,13 +55,13 @@ export default function Jogadores() {
 
   function abrirEditar(j: Jogador) {
     setEditando(j)
-    setForm({ nome: j.nome, email: j.email ?? "", posicao: j.posicao ?? "qualquer", nota: String(j.nota ?? 5) })
+    setForm({ nome: j.nome, email: j.email ?? "", posicao: j.posicao ?? "qualquer", nota: String(j.nota ?? 5), isento: j.isento })
     setModal(true)
   }
 
   function abrirModalAdmin() {
     setEditando(null)
-    setForm({ nome: usuario?.nome ?? "", email: usuario?.email ?? "", posicao: "qualquer", nota: "5" })
+    setForm({ nome: usuario?.nome ?? "", email: usuario?.email ?? "", posicao: "qualquer", nota: "5", isento: false })
     setModal(true)
   }
 
@@ -72,6 +73,7 @@ export default function Jogadores() {
       email: form.email.trim() || null,
       posicao: form.posicao || "qualquer",
       nota: form.nota ? parseInt(form.nota) : 5,
+      isento: form.isento,
     }
     if (editando) {
       await supabase.from("jogadores").update(payload).eq("id", editando.id)
@@ -126,9 +128,9 @@ export default function Jogadores() {
             <thead>
               <tr>
                 <th>Jogador</th>
-                <th>Email</th>
                 <th>Posição</th>
                 <th>Nota</th>
+                <th>Mensalidade</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -139,12 +141,21 @@ export default function Jogadores() {
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div className={s.avatar}>{iniciais(j.nome)}</div>
-                      <div style={{ fontWeight: 500, color: "var(--text)" }}>{j.nome}</div>
+                      <div>
+                        <div style={{ fontWeight: 500, color: "var(--text)" }}>{j.nome}</div>
+                        {j.email && <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{j.email}</div>}
+                      </div>
                     </div>
                   </td>
-                  <td>{j.email ?? "—"}</td>
                   <td style={{ textTransform: "capitalize" }}>{j.posicao ?? "—"}</td>
                   <td>{j.nota ?? "—"}</td>
+                  <td>
+                    {j.isento ? (
+                      <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem", background: "#f3f4f6", color: "#6b7280", borderRadius: 5 }}>Isento</span>
+                    ) : (
+                      <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Normal</span>
+                    )}
+                  </td>
                   <td>
                     <span className={j.ativo ? s.badgeConfirmado : s.badgeCancelado}>
                       {j.ativo ? "Ativo" : "Inativo"}
@@ -213,6 +224,20 @@ export default function Jogadores() {
                   <select className={s.formSelect} value={form.nota} onChange={e => setForm(f => ({...f, nota: e.target.value}))}>
                     {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
+                </div>
+                <div className={`${s.formGroup} ${s.full}`}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.6rem", cursor: "pointer", fontWeight: 500, fontSize: "0.85rem", color: "var(--text)" }}>
+                    <input
+                      type="checkbox"
+                      checked={form.isento}
+                      onChange={e => setForm(f => ({...f, isento: e.target.checked}))}
+                      style={{ width: 16, height: 16, cursor: "pointer" }}
+                    />
+                    Isento de mensalidade
+                  </label>
+                  <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                    Marque para jogadores que não pagam (ex: goleiros). Não serão incluídos nas mensalidades recorrentes.
+                  </div>
                 </div>
               </div>
             </div>

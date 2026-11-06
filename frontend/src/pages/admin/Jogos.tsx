@@ -10,17 +10,38 @@ type Jogo = {
   local: string
   status: string
   max_jogadores: number | null
+  confirmacao_ate: string | null
 }
 
-type Form = { data: string; horario: string; local: string; max_jogadores: string; status: string }
+type Form = {
+  data: string
+  horario: string
+  local: string
+  max_jogadores: string
+  status: string
+  confirmacao_ate: string
+}
 
-const FORM_VAZIO: Form = { data: "", horario: "10:00", local: "", max_jogadores: "14", status: "agendado" }
+const FORM_VAZIO: Form = {
+  data: "",
+  horario: "10:00",
+  local: "",
+  max_jogadores: "14",
+  status: "agendado",
+  confirmacao_ate: "",
+}
 
 const STATUS_LABEL: Record<string, string> = {
   agendado: "Agendado",
   confirmado: "Confirmado",
   realizado: "Realizado",
   cancelado: "Cancelado",
+}
+
+function isoParaDatetimeLocal(iso: string | null): string {
+  if (!iso) return ""
+  // "2026-11-10T14:00:00+00:00" → "2026-11-10T14:00"
+  return iso.slice(0, 16)
 }
 
 export default function Jogos() {
@@ -39,7 +60,11 @@ export default function Jogos() {
 
   async function carregar(patotatId: number) {
     setLoading(true)
-    const { data } = await supabase.from("jogos").select("*").eq("patota_id", patotatId).order("data", { ascending: false })
+    const { data } = await supabase
+      .from("jogos")
+      .select("*")
+      .eq("patota_id", patotatId)
+      .order("data", { ascending: false })
     setJogos(data ?? [])
     setLoading(false)
   }
@@ -58,6 +83,7 @@ export default function Jogos() {
       local: j.local,
       max_jogadores: j.max_jogadores ? String(j.max_jogadores) : "",
       status: j.status,
+      confirmacao_ate: isoParaDatetimeLocal(j.confirmacao_ate),
     })
     setModal(true)
   }
@@ -71,6 +97,7 @@ export default function Jogos() {
       local: form.local.trim(),
       max_jogadores: form.max_jogadores ? parseInt(form.max_jogadores) : null,
       status: form.status,
+      confirmacao_ate: form.confirmacao_ate ? new Date(form.confirmacao_ate).toISOString() : null,
     }
     if (editando) {
       await supabase.from("jogos").update(payload).eq("id", editando.id)
@@ -95,6 +122,12 @@ export default function Jogos() {
     return `${d}/${m}/${a}`
   }
 
+  function fmtDeadline(iso: string | null) {
+    if (!iso) return null
+    const d = new Date(iso)
+    return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+  }
+
   if (loading) return <div className={s.page}><div className={s.empty}>Carregando...</div></div>
 
   return (
@@ -117,7 +150,7 @@ export default function Jogos() {
                 <th>Data</th>
                 <th>Horário</th>
                 <th>Local</th>
-                <th>Máx.</th>
+                <th>Conf. até</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -128,7 +161,9 @@ export default function Jogos() {
                   <td style={{ fontWeight: 500, color: "var(--text)" }}>{fmtData(j.data)}</td>
                   <td>{j.horario.slice(0, 5)}</td>
                   <td>{j.local}</td>
-                  <td>{j.max_jogadores ?? "—"}</td>
+                  <td style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+                    {fmtDeadline(j.confirmacao_ate) ?? "—"}
+                  </td>
                   <td>
                     <span className={s[`badge${j.status.charAt(0).toUpperCase() + j.status.slice(1)}`] || s.badgeAgendado}>
                       {STATUS_LABEL[j.status] ?? j.status}
@@ -193,6 +228,18 @@ export default function Jogos() {
                     <option value="realizado">Realizado</option>
                     <option value="cancelado">Cancelado</option>
                   </select>
+                </div>
+                <div className={`${s.formGroup} ${s.full}`}>
+                  <label className={s.formLabel}>Confirmações encerram em</label>
+                  <input
+                    className={s.formInput}
+                    type="datetime-local"
+                    value={form.confirmacao_ate}
+                    onChange={e => setForm(f => ({...f, confirmacao_ate: e.target.value}))}
+                  />
+                  <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.25rem" }}>
+                    Após esta data/hora, confirmações serão bloqueadas na página pública.
+                  </div>
                 </div>
               </div>
             </div>

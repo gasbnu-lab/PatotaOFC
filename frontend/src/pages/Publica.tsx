@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
+import { useAuth } from "../lib/useAuth"
 import Logo from "../components/Logo"
 import styles from "./Publica.module.css"
 
-type Patota = { id: string; nome: string }
+type Patota = {
+  id: string
+  nome: string
+  local_fixo: string | null
+  horario_fixo: string | null
+  recado: string | null
+}
 
 type Jogo = {
   id: string
@@ -13,6 +20,7 @@ type Jogo = {
   local: string
   status: string
   max_jogadores: number | null
+  confirmacao_ate: string | null
 }
 
 type Presenca = {
@@ -78,9 +86,21 @@ function iniciais(nome: string) {
   return (p[0][0] + (p[1]?.[0] ?? "")).toUpperCase()
 }
 
+function fmtDeadlineCountdown(iso: string): string {
+  const diff = new Date(iso).getTime() - Date.now()
+  if (diff <= 0) return ""
+  const horas = Math.floor(diff / 3600000)
+  const min = Math.floor((diff % 3600000) / 60000)
+  if (horas < 1) return `Encerra em ${min}min`
+  if (horas < 24) return `Encerra em ${horas}h${min > 0 ? min + "min" : ""}`
+  const dias = Math.floor(horas / 24)
+  return `Encerra em ${dias}d`
+}
+
 export default function Publica() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const { session } = useAuth()
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark")
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState("")
@@ -105,11 +125,10 @@ export default function Publica() {
     setLoading(true)
     const hoje = new Date().toISOString().split("T")[0]
 
-    // busca patota pelo slug (ou pelo id numérico como fallback)
     const isNumeric = /^\d+$/.test(s)
     const patotaQuery = isNumeric
-      ? supabase.from("patota").select("id, nome").eq("id", parseInt(s)).maybeSingle()
-      : supabase.from("patota").select("id, nome").eq("slug", s).maybeSingle()
+      ? supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado").eq("id", parseInt(s)).maybeSingle()
+      : supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado").eq("slug", s).maybeSingle()
 
     const { data: pat } = await patotaQuery
     if (!pat) { setLoading(false); return }
@@ -152,21 +171,44 @@ export default function Publica() {
     setLoading(false)
   }
 
+  // Jogador logado (sessão ativa na patota)
+  const jogadorLogado = session?.user?.email
+    ? jogadores.find(j => j.email?.toLowerCase() === session.user.email.toLowerCase()) ?? null
+    : null
+
   async function confirmarPresenca(confirmar: boolean) {
-    if (!jogo || !email.trim()) return
+    if (!jogo) return
     setLoadingConf(true)
-    const jogador = jogadores.find(j => j.email?.toLowerCase() === email.toLowerCase().trim())
+
+    // Usa email da sessão se disponível, senão usa o campo digitado
+    const emailBusca = jogadorLogado?.email ?? email.trim()
+
+    if (!emailBusca) {
+      showToast("Informe seu e-mail para confirmar.")
+      setLoadingConf(false)
+      return
+    }
+
+    const jogador = jogadores.find(j => j.email?.toLowerCase() === emailBusca.toLowerCase())
     if (!jogador) {
       showToast("E-mail não encontrado na patota 🤔")
       setLoadingConf(false)
       return
     }
-    const { data: exist } = await supabase.from("presencas").select("id").eq("jogo_id", jogo.id).eq("jogador_id", jogador.id).maybeSingle()
+
+    const { data: exist } = await supabase
+      .from("presencas")
+      .select("id")
+      .eq("jogo_id", jogo.id)
+      .eq("jogador_id", jogador.id)
+      .maybeSingle()
+
     if (exist) {
       await supabase.from("presencas").update({ confirmado: confirmar }).eq("id", exist.id)
     } else {
       await supabase.from("presencas").insert({ jogo_id: jogo.id, jogador_id: jogador.id, confirmado: confirmar })
     }
+
     showToast(confirmar ? rand(FRASES_OK) : rand(FRASES_NAO))
     setEmail("")
     setConfirmando(false)
@@ -187,15 +229,21 @@ export default function Publica() {
     return p.jogadores?.nome ?? p.nome_convidado ?? "Convidado"
   }
 
-  // Mensalidades: só o mês mais recente
   const mesAtual = mensalidades.length > 0
     ? [...new Set(mensalidades.map(m => m.mes_ref))].sort().reverse()[0]
     : null
-
   const mensDoMes = mesAtual ? mensalidades.filter(m => m.mes_ref === mesAtual) : []
 
   const churrascoAtual = churrascos[0] ?? null
   const totalChurr = churrascoAtual?.churrasco_despesas.reduce((s, d) => s + Number(d.valor), 0) ?? 0
+
+  // Deadline de confirmação
+  const confirmacaoEncerrada = jogo?.confirmacao_ate
+    ? new Date() > new Date(jogo.confirmacao_ate)
+    : false
+  const deadlineCountdown = jogo?.confirmacao_ate && !confirmacaoEncerrada
+    ? fmtDeadlineCountdown(jogo.confirmacao_ate)
+    : null
 
   if (loading) {
     return (
@@ -231,6 +279,31 @@ export default function Publica() {
 
       <main className={styles.main}>
 
+        {/* Info da patota */}
+        {(patota?.local_fixo || patota?.horario_fixo || patota?.recado) && (
+          <div className={styles.card} style={{ background: "var(--accent-bg, #f9fafb)" }}>
+            <div className={styles.cardPad}>
+              {patota.local_fixo && (
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", marginBottom: "0.4rem" }}>
+                  <span>📍</span>
+                  <span style={{ fontSize: "0.9rem", color: "var(--text)" }}>{patota.local_fixo}</span>
+                </div>
+              )}
+              {patota.horario_fixo && (
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", marginBottom: "0.4rem" }}>
+                  <span>⏰</span>
+                  <span style={{ fontSize: "0.9rem", color: "var(--text)" }}>{patota.horario_fixo}</span>
+                </div>
+              )}
+              {patota.recado && (
+                <div style={{ marginTop: "0.5rem", padding: "0.6rem 0.8rem", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, fontSize: "0.88rem", color: "#92400e" }}>
+                  📢 {patota.recado}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Próximo jogo */}
         <div className={styles.card}>
           {jogo ? (
@@ -241,6 +314,16 @@ export default function Publica() {
                   {diaSemana(jogo.data)}, {fmtData(jogo.data)} · {fmtHora(jogo.horario)}
                 </div>
                 <div className={styles.jogoLocal}>📍 {jogo.local}</div>
+                {deadlineCountdown && (
+                  <div style={{ marginTop: "0.4rem", fontSize: "0.78rem", color: "#b45309", background: "#fef3c7", display: "inline-block", padding: "0.2rem 0.5rem", borderRadius: 6 }}>
+                    ⏳ {deadlineCountdown}
+                  </div>
+                )}
+                {confirmacaoEncerrada && (
+                  <div style={{ marginTop: "0.4rem", fontSize: "0.78rem", color: "#dc2626", background: "#fef2f2", display: "inline-block", padding: "0.2rem 0.5rem", borderRadius: 6 }}>
+                    🔒 Confirmações encerradas
+                  </div>
+                )}
               </div>
 
               {/* Stats */}
@@ -260,39 +343,59 @@ export default function Publica() {
               </div>
 
               {/* Botão confirmar */}
-              {!confirmando ? (
-                <button className={styles.confirmBtn} onClick={() => setConfirmando(true)}>
-                  <div className={styles.confirmIconBox}>✅</div>
-                  <div className={styles.confirmTextos}>
-                    <strong>Confirmar presença</strong>
-                    <span>Toque para responder</span>
-                  </div>
-                  <span className={styles.chevron}>›</span>
-                </button>
-              ) : (
-                <div className={styles.confirmBox}>
-                  <p className={styles.confirmBoxLabel}>Qual é o seu e-mail cadastrado?</p>
-                  <input
-                    className={styles.emailInput}
-                    type="email"
-                    placeholder="voce@email.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && confirmarPresenca(true)}
-                    autoFocus
-                  />
-                  <div className={styles.confirmBtns}>
-                    <button className={styles.btnVou} onClick={() => confirmarPresenca(true)} disabled={loadingConf}>
-                      ✅ Vou!
+              {!confirmacaoEncerrada && (
+                <>
+                  {/* Logged-in user: direct confirm */}
+                  {jogadorLogado && !confirmando ? (
+                    <div className={styles.confirmBox} style={{ gap: "0.5rem" }}>
+                      <p className={styles.confirmBoxLabel}>Olá, <strong>{jogadorLogado.nome}</strong>! Vai no jogo?</p>
+                      <div className={styles.confirmBtns}>
+                        <button className={styles.btnVou} onClick={() => confirmarPresenca(true)} disabled={loadingConf}>
+                          ✅ Vou!
+                        </button>
+                        <button className={styles.btnNaoVou} onClick={() => confirmarPresenca(false)} disabled={loadingConf}>
+                          ❌ Não vou
+                        </button>
+                      </div>
+                    </div>
+                  ) : !confirmando ? (
+                    <button className={styles.confirmBtn} onClick={() => setConfirmando(true)}>
+                      <div className={styles.confirmIconBox}>✅</div>
+                      <div className={styles.confirmTextos}>
+                        <strong>Confirmar presença</strong>
+                        <span>Toque para responder</span>
+                      </div>
+                      <span className={styles.chevron}>›</span>
                     </button>
-                    <button className={styles.btnNaoVou} onClick={() => confirmarPresenca(false)} disabled={loadingConf}>
-                      ❌ Não vou
-                    </button>
-                    <button className={styles.btnVoltar} onClick={() => { setConfirmando(false); setEmail("") }}>
-                      ←
-                    </button>
-                  </div>
-                </div>
+                  ) : (
+                    <div className={styles.confirmBox}>
+                      <p className={styles.confirmBoxLabel}>Qual é o seu e-mail cadastrado?</p>
+                      <input
+                        className={styles.emailInput}
+                        type="email"
+                        placeholder="voce@email.com"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && confirmarPresenca(true)}
+                        autoFocus
+                      />
+                      <div className={styles.confirmBtns}>
+                        <button className={styles.btnVou} onClick={() => confirmarPresenca(true)} disabled={loadingConf}>
+                          ✅ Vou!
+                        </button>
+                        <button className={styles.btnNaoVou} onClick={() => confirmarPresenca(false)} disabled={loadingConf}>
+                          ❌ Não vou
+                        </button>
+                        <button className={styles.btnVoltar} onClick={() => { setConfirmando(false); setEmail("") }}>
+                          ←
+                        </button>
+                      </div>
+                      <p style={{ fontSize: "0.75rem", color: "var(--muted)", textAlign: "center", marginTop: "0.5rem" }}>
+                        <a href="/login" style={{ color: "var(--accent)", textDecoration: "none" }}>Fazer login</a> para confirmar sem digitar o e-mail
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Lista */}

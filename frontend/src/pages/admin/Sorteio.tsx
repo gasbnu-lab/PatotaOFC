@@ -26,6 +26,8 @@ type JogadorSorteio = {
 
 type Time = { label: string; jogadores: JogadorSorteio[] }
 
+const MIN_CONFIRMADOS = 12
+
 function fmtData(iso: string) {
   const [a, m, d] = iso.split("-")
   return `${d}/${m}/${a}`
@@ -49,6 +51,7 @@ export default function Sorteio() {
   const [sorteando, setSorteando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sorteioSalvo, setSorteioSalvo] = useState(false)
+  const [numConfirmados, setNumConfirmados] = useState(0)
 
   useEffect(() => { carregar() }, [])
 
@@ -70,6 +73,14 @@ export default function Sorteio() {
     setJogo(proximoJogo)
 
     if (proximoJogo) {
+      // conta confirmados
+      const { count } = await supabase
+        .from("presencas")
+        .select("id", { count: "exact", head: true })
+        .eq("jogo_id", proximoJogo.id)
+        .eq("confirmado", true)
+      setNumConfirmados(count ?? 0)
+
       const { data: salvo } = await supabase
         .from("sorteio_times")
         .select("*")
@@ -97,6 +108,10 @@ export default function Sorteio() {
 
   async function sortear() {
     if (!jogo) return
+    if (numConfirmados < MIN_CONFIRMADOS) {
+      setErro(`São necessários pelo menos ${MIN_CONFIRMADOS} confirmados para sortear. Atualmente: ${numConfirmados}.`)
+      return
+    }
     setSorteando(true)
     setErro(null)
 
@@ -119,7 +134,6 @@ export default function Sorteio() {
       return
     }
 
-    // Persiste: apaga sorteio anterior e insere novo
     await supabase.from("sorteio_times").delete().eq("jogo_id", jogo.id)
 
     const rows = (data as JogadorSorteio[]).map(r => ({
@@ -140,6 +154,7 @@ export default function Sorteio() {
   }
 
   const confirmados = times.flatMap(t => t.jogadores).length
+  const podeSortear = numConfirmados >= MIN_CONFIRMADOS
 
   if (loading) return (
     <div className={s.page}>
@@ -157,7 +172,6 @@ export default function Sorteio() {
         </div>
       </div>
 
-      {/* Card do jogo */}
       {jogo ? (
         <div className={ss.jogoCard}>
           <div className={ss.jogoIcon}>⚽</div>
@@ -165,9 +179,9 @@ export default function Sorteio() {
             <div className={ss.jogoData}>{diaSemana(jogo.data)}, {fmtData(jogo.data)} · {fmtHora(jogo.horario)}</div>
             <div className={ss.jogoLocal}>📍 {jogo.local}</div>
           </div>
-          {sorteioSalvo && (
-            <div className={ss.jogoBadge}>{confirmados} jogadores · {times.length} times</div>
-          )}
+          <div className={ss.jogoBadge} style={{ color: podeSortear ? "#16a34a" : "#dc2626" }}>
+            {numConfirmados}/{MIN_CONFIRMADOS} confirmados
+          </div>
         </div>
       ) : (
         <div className={ss.vazio}>
@@ -178,13 +192,19 @@ export default function Sorteio() {
 
       {jogo && (
         <>
+          {!podeSortear && (
+            <div className={ss.erro} style={{ background: "#fef9c3", borderColor: "#f59e0b", color: "#92400e" }}>
+              Aguardando mais jogadores. Mínimo de {MIN_CONFIRMADOS} confirmados para sortear (faltam {MIN_CONFIRMADOS - numConfirmados}).
+            </div>
+          )}
+
           {erro && <div className={ss.erro}>{erro}</div>}
 
-          {/* Botão sortear */}
           <button
             className={ss.btnSortear}
             onClick={sortear}
-            disabled={sorteando}
+            disabled={sorteando || !podeSortear}
+            style={!podeSortear ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
           >
             {sorteando ? (
               <><span className={ss.btnSpinner} /> Sorteando...</>
@@ -195,7 +215,6 @@ export default function Sorteio() {
             )}
           </button>
 
-          {/* Times */}
           {times.length > 0 && (
             <div className={ss.timesGrid}>
               {times.map(time => (
@@ -218,9 +237,9 @@ export default function Sorteio() {
             </div>
           )}
 
-          {times.length === 0 && !erro && (
+          {times.length === 0 && !erro && podeSortear && (
             <div className={ss.hint}>
-              Clique em "Sortear times" para gerar os times balanceados com os jogadores confirmados.
+              Clique em "Sortear times" para gerar os times balanceados com os {numConfirmados} jogadores confirmados.
             </div>
           )}
         </>
