@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js"
 export type Usuario = {
   id: string
   patota_id: number
+  patota_slug: string | null
   nome: string
   email: string | null
   role: "admin" | "membro"
@@ -19,10 +20,15 @@ export function useAuth() {
   async function loadUsuario(userId: string) {
     const { data } = await supabase
       .from("usuarios")
-      .select("*")
+      .select("*, patota:patota(slug)")
       .eq("id", userId)
       .maybeSingle()
-    setUsuario(data ?? null)
+    if (data) {
+      const { patota, ...rest } = data as typeof data & { patota?: { slug: string } | null }
+      setUsuario({ ...rest, patota_slug: patota?.slug ?? null })
+    } else {
+      setUsuario(null)
+    }
     setLoading(false)
   }
 

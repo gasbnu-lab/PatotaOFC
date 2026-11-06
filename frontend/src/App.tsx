@@ -33,7 +33,9 @@ function HomeRedirect() {
     if (loading) return
     if (!session) {
       navigate("/login", { replace: true })
-    } else if (usuario?.patota_id) {
+    } else if (usuario?.patota_slug) {
+      navigate(`/p/${usuario.patota_slug}`, { replace: true })
+    } else if (usuario?.patota_id && !usuario.patota_slug) {
       navigate(`/p/${usuario.patota_id}`, { replace: true })
     } else if (usuario === null && session) {
       navigate("/login", { replace: true })
@@ -49,7 +51,7 @@ export default function App() {
       <AuthRedirect />
       <Routes>
         <Route path="/" element={<HomeRedirect />} />
-        <Route path="/p/:patotatId" element={<Publica />} />
+        <Route path="/p/:slug" element={<Publica />} />
         <Route path="/login" element={<Login />} />
         <Route path="/aguardando" element={<Aguardando />} />
         <Route path="/home" element={<Home />} />
