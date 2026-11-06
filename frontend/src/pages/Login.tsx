@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
+import Logo from "../components/Logo"
 import s from "./Login.module.css"
 
 type Patota = { id: number; nome: string }
@@ -162,8 +163,7 @@ export default function Login() {
   return (
     <div className={s.page}>
       <div className={s.logo}>
-        <div className={s.logoBadge}>P</div>
-        <div className={s.logoNome}>PATOTAOFC</div>
+        <Logo size={160} />
       </div>
 
       <div className={s.card}>
