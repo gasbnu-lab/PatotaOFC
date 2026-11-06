@@ -126,8 +126,8 @@ export default function Publica() {
 
   useEffect(() => { if (slug) carregar(slug) }, [slug])
 
-  async function carregar(s: string) {
-    setLoading(true)
+  async function carregar(s: string, silent = false) {
+    if (!silent) setLoading(true)
     const hoje = new Date().toISOString().split("T")[0]
 
     const isNumeric = /^\d+$/.test(s)
@@ -258,8 +258,8 @@ export default function Publica() {
     setConvidadoNome("")
     setAdicionandoConvidado(false)
     setConfirmando(false)
-    // Sincroniza com o servidor em background para substituir o estado otimista
-    if (slug) carregar(slug)
+    // Sincroniza com o servidor em background sem mostrar spinner
+    if (slug) carregar(slug, true)
     setLoadingConf(false)
   }
 
