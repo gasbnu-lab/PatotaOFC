@@ -23,6 +23,7 @@ export default function AdminLayout() {
   const { session, usuario, loading, sair } = useAuth()
   const [menuAberto, setMenuAberto] = useState(false)
   const [nomeTime, setNomeTime] = useState("")
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (loading) return
@@ -35,8 +36,9 @@ export default function AdminLayout() {
 
   useEffect(() => {
     if (!usuario?.patota_id) return
-    supabase.from("patota").select("nome").eq("id", usuario.patota_id).maybeSingle().then(({ data }) => {
+    supabase.from("patota").select("nome, logo_url").eq("id", usuario.patota_id).maybeSingle().then(({ data }) => {
       if (data?.nome) setNomeTime(data.nome)
+      setLogoUrl(data?.logo_url ?? null)
     })
   }, [usuario?.patota_id])
 
@@ -55,7 +57,9 @@ export default function AdminLayout() {
       {/* Header mobile */}
       <header className={styles.header}>
         <button className={styles.menuBtn} onClick={() => setMenuAberto(v => !v)}>☰</button>
-        <div className={styles.headerLogo}>P</div>
+        {logoUrl
+          ? <img src={logoUrl} alt={nomeTime} className={styles.headerLogo} style={{ objectFit: "contain", borderRadius: 6 }} />
+          : <div className={styles.headerLogo}>P</div>}
         <div className={styles.headerTitulo}>
           <span className={styles.headerAppNome}>PATOTAOFC</span>
           {nomeTime && <span className={styles.headerNomeTime}>{nomeTime}</span>}
@@ -67,7 +71,9 @@ export default function AdminLayout() {
         {/* Sidebar */}
         <nav className={`${styles.sidebar} ${menuAberto ? styles.sidebarAberta : ""}`}>
           <div className={styles.sidebarTopo}>
-            <div className={styles.sidebarLogo}>P</div>
+            {logoUrl
+              ? <img src={logoUrl} alt={nomeTime} className={styles.sidebarLogo} style={{ objectFit: "contain", borderRadius: 6 }} />
+              : <div className={styles.sidebarLogo}>P</div>}
             <div className={styles.sidebarTitulos}>
               <div className={styles.sidebarAppNome}>PATOTAOFC</div>
               {nomeTime && <div className={styles.sidebarNomeTime}>{nomeTime}</div>}

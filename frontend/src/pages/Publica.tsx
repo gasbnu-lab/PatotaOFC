@@ -201,17 +201,17 @@ export default function Publica() {
       return
     }
 
-    const { data: exist } = await supabase
+    const { error: errConf } = await supabase
       .from("presencas")
-      .select("id")
-      .eq("jogo_id", jogo.id)
-      .eq("jogador_id", jogador.id)
-      .maybeSingle()
+      .upsert(
+        { jogo_id: jogo.id, jogador_id: jogador.id, confirmado: confirmar },
+        { onConflict: "jogo_id,jogador_id" }
+      )
 
-    if (exist) {
-      await supabase.from("presencas").update({ confirmado: confirmar }).eq("id", exist.id)
-    } else {
-      await supabase.from("presencas").insert({ jogo_id: jogo.id, jogador_id: jogador.id, confirmado: confirmar })
+    if (errConf) {
+      showToast("Erro ao confirmar presença 😕")
+      setLoadingConf(false)
+      return
     }
 
     // Adicionar convidado — confirmado mas pendente de aprovação pelo admin

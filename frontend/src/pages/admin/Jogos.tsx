@@ -139,14 +139,26 @@ export default function Jogos() {
       }
     }
 
-    // Verifica quais já existem
+    // Ignora datas no passado
+    const hoje = new Date().toISOString().split("T")[0]
+    const datasFuturas = datas.filter(d => d >= hoje)
+
+    if (datasFuturas.length === 0) {
+      setMsgRec("Nenhuma data futura encontrada para este período.")
+      setGerandoRec(false)
+      return
+    }
+
+    // Verifica quais já existem (mesmo dia e horário)
     const { data: existentes } = await supabase
       .from("jogos")
-      .select("data")
+      .select("data, horario")
       .eq("patota_id", usuario.patota_id)
-      .in("data", datas)
-    const existentesSet = new Set((existentes ?? []).map(e => e.data))
-    const novas = datas.filter(d => !existentesSet.has(d))
+      .in("data", datasFuturas)
+    const existentesSet = new Set(
+      (existentes ?? []).map(e => `${e.data}|${e.horario}`)
+    )
+    const novas = datasFuturas.filter(d => !existentesSet.has(`${d}|${recHorario}`))
 
     if (novas.length === 0) {
       setMsgRec("Todos os jogos deste período já estão cadastrados.")
