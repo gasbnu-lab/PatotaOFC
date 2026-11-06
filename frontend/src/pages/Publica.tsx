@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useParams } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import Logo from "../components/Logo"
 import styles from "./Publica.module.css"
@@ -78,6 +79,8 @@ function iniciais(nome: string) {
 }
 
 export default function Publica() {
+  const { patotatId } = useParams<{ patotatId: string }>()
+  const patotatIdNum = patotatId ? parseInt(patotatId) : null
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark")
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState("")
@@ -96,16 +99,16 @@ export default function Publica() {
     localStorage.setItem("theme", dark ? "dark" : "light")
   }, [dark])
 
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { if (patotatIdNum) carregar(patotatIdNum) }, [patotatIdNum])
 
-  async function carregar() {
+  async function carregar(pid: number) {
     setLoading(true)
     const hoje = new Date().toISOString().split("T")[0]
 
     const [{ data: pat }, { data: jogos }, { data: jogs }] = await Promise.all([
-      supabase.from("patota").select("id, nome").limit(1).maybeSingle(),
-      supabase.from("jogos").select("*").gte("data", hoje).in("status", ["agendado", "confirmado"]).order("data").limit(1),
-      supabase.from("jogadores").select("id, nome, email").eq("ativo", true).order("nome"),
+      supabase.from("patota").select("id, nome").eq("id", pid).maybeSingle(),
+      supabase.from("jogos").select("*").eq("patota_id", pid).gte("data", hoje).in("status", ["agendado", "confirmado"]).order("data").limit(1),
+      supabase.from("jogadores").select("id, nome, email").eq("patota_id", pid).eq("ativo", true).order("nome"),
     ])
 
     setPatota(pat ?? null)
@@ -124,6 +127,7 @@ export default function Publica() {
     const { data: mens } = await supabase
       .from("mensalidades")
       .select("*, jogadores(nome)")
+      .eq("patota_id", pid)
       .gte("mes_ref", tres.toISOString().slice(0, 7) + "-01")
       .order("mes_ref", { ascending: false })
     setMensalidades(mens ?? [])
@@ -131,6 +135,7 @@ export default function Publica() {
     const { data: churr } = await supabase
       .from("churrascos")
       .select("*, churrasco_despesas(valor), churrasco_participantes(id)")
+      .eq("patota_id", pid)
       .order("data", { ascending: false })
       .limit(1)
     setChrurrascos(churr ?? [])
@@ -156,7 +161,7 @@ export default function Publica() {
     showToast(confirmar ? rand(FRASES_OK) : rand(FRASES_NAO))
     setEmail("")
     setConfirmando(false)
-    await carregar()
+    if (patotatIdNum) await carregar(patotatIdNum)
     setLoadingConf(false)
   }
 

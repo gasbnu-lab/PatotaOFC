@@ -12,8 +12,6 @@ import Mensalidades from "./pages/admin/Mensalidades"
 import { SorteioPage, ConvidadosPage, ChurrascosPage, FinanceiroPage, ConfigPage } from "./pages/admin/Stub"
 import { useAuth } from "./lib/useAuth"
 
-// Detecta usuário autenticado mas sem registro em usuarios (ex: após Google OAuth)
-// e redireciona para /login completar o cadastro (escolher patota)
 function AuthRedirect() {
   const { session, usuario, loading } = useAuth()
   const navigate = useNavigate()
@@ -27,12 +25,31 @@ function AuthRedirect() {
   return null
 }
 
+function HomeRedirect() {
+  const { session, usuario, loading } = useAuth()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (loading) return
+    if (!session) {
+      navigate("/login", { replace: true })
+    } else if (usuario?.patota_id) {
+      navigate(`/p/${usuario.patota_id}`, { replace: true })
+    } else if (usuario === null && session) {
+      navigate("/login", { replace: true })
+    }
+  }, [loading, session, usuario, navigate])
+
+  return null
+}
+
 export default function App() {
   return (
     <>
       <AuthRedirect />
       <Routes>
-        <Route path="/" element={<Publica />} />
+        <Route path="/" element={<HomeRedirect />} />
+        <Route path="/p/:patotatId" element={<Publica />} />
         <Route path="/login" element={<Login />} />
         <Route path="/aguardando" element={<Aguardando />} />
         <Route path="/home" element={<Home />} />
