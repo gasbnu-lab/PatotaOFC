@@ -9,8 +9,10 @@ import Dashboard from "./pages/admin/Dashboard"
 import Jogadores from "./pages/admin/Jogadores"
 import Jogos from "./pages/admin/Jogos"
 import Mensalidades from "./pages/admin/Mensalidades"
-import { SorteioPage, ConvidadosPage, ChurrascosPage, FinanceiroPage, ConfigPage } from "./pages/admin/Stub"
+import { ConvidadosPage, ChurrascosPage, FinanceiroPage, ConfigPage } from "./pages/admin/Stub"
 import Perfil from "./pages/admin/Perfil"
+import Sorteio from "./pages/admin/Sorteio"
+import SorteioPublico from "./pages/SorteioPublico"
 import { useAuth } from "./lib/useAuth"
 
 function AuthRedirect() {
@@ -53,6 +55,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomeRedirect />} />
         <Route path="/p/:slug" element={<Publica />} />
+        <Route path="/p/:slug/sorteio" element={<SorteioPublico />} />
         <Route path="/login" element={<Login />} />
         <Route path="/aguardando" element={<Aguardando />} />
         <Route path="/home" element={<Home />} />
@@ -60,7 +63,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="jogadores" element={<Jogadores />} />
           <Route path="jogos" element={<Jogos />} />
-          <Route path="sorteio" element={<SorteioPage />} />
+          <Route path="sorteio" element={<Sorteio />} />
           <Route path="convidados" element={<ConvidadosPage />} />
           <Route path="mensalidades" element={<Mensalidades />} />
           <Route path="churrascos" element={<ChurrascosPage />} />

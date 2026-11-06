@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
+import { useParams, useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import Logo from "../components/Logo"
 import styles from "./Publica.module.css"
@@ -80,6 +80,7 @@ function iniciais(nome: string) {
 
 export default function Publica() {
   const { slug } = useParams<{ slug: string }>()
+  const navigate = useNavigate()
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark")
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState("")
@@ -336,12 +337,12 @@ export default function Publica() {
 
         {/* Sorteio */}
         {jogo && (
-          <div className={styles.card}>
+          <div className={styles.card} style={{ cursor: "pointer" }} onClick={() => navigate(`/p/${slug}/sorteio`)}>
             <div className={styles.rowLink}>
               <div className={styles.rowIconBox}>⚽</div>
               <div className={styles.rowTextos}>
                 <strong>Sorteio de times</strong>
-                <span>Ver times do sábado</span>
+                <span>Ver times do próximo jogo</span>
               </div>
               <span className={styles.chevron}>›</span>
             </div>

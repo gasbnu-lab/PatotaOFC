@@ -1,0 +1,191 @@
+.jogoCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.jogoIcon { font-size: 1.5rem; flex-shrink: 0; }
+
+.jogoInfo { flex: 1; }
+
+.jogoData {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.jogoLocal {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.jogoBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #FFD60022;
+  color: #9a7c00;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+:global([data-theme="dark"]) .jogoBadge {
+  background: #FFD60030;
+  color: #FFD600;
+}
+
+.btnSortear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.85rem;
+  background: #FFD600;
+  color: #111;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  margin-bottom: 1.5rem;
+}
+
+.btnSortear:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+.btnSortear:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnSpinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #11111140;
+  border-top-color: #111;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.timesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.timeCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.timeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #FFD600;
+  color: #111;
+}
+
+.timeLabel {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.timeMedia {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.timeList {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+}
+
+.timeItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.itemAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text2);
+  flex-shrink: 0;
+}
+
+.itemNome { flex: 1; }
+
+.itemRating {
+  font-size: 0.75rem;
+  color: var(--muted);
+  min-width: 16px;
+  text-align: right;
+}
+
+.erro {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+}
+
+:global([data-theme="dark"]) .erro {
+  background: #450a0a;
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+.hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.88rem;
+  padding: 2rem 1rem;
+}
+
+.vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.vazioIcon { font-size: 2rem; }
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: #FFD600;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 3rem auto;
+}
