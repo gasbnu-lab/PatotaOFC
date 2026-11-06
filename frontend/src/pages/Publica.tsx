@@ -151,7 +151,7 @@ export default function Publica() {
     setJogo(proximoJogo)
 
     if (proximoJogo) {
-      const { data: p } = await supabase.from("presencas").select("*, jogadores(nome)").eq("jogo_id", proximoJogo.id)
+      const { data: p } = await supabase.from("presencas").select("*, jogadores!jogador_id(nome)").eq("jogo_id", proximoJogo.id)
       setPresencas(p ?? [])
     }
 
@@ -222,7 +222,6 @@ export default function Publica() {
       setLoadingConf(false)
       return
     }
-
     // Atualização otimista: reflete imediatamente na UI sem depender da recarga
     setPresencas(prev => {
       const idx = prev.findIndex(p => p.jogador_id === jogador.id)
