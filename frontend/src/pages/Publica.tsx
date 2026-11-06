@@ -103,7 +103,7 @@ function fmtDeadlineCountdown(iso: string): string {
 export default function Publica() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
-  const { session } = useAuth()
+  const { session, usuario } = useAuth()
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark")
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState("")
@@ -239,6 +239,11 @@ export default function Publica() {
     setTimeout(() => setToast(""), 3500)
   }
 
+  // Status de confirmação do jogador logado no jogo atual
+  const presencaLogado = jogadorLogado
+    ? presencas.find(p => p.jogador_id === jogadorLogado.id) ?? null
+    : null
+
   // Convidados só aparecem na lista pública depois de aprovados pelo admin
   const confirmados = presencas.filter(p => p.confirmado && (!p.convidado || p.aprovado))
   const ausentes = presencas.filter(p => !p.confirmado && !p.convidado)
@@ -371,7 +376,14 @@ export default function Publica() {
                   {/* Logged-in user: direct confirm */}
                   {jogadorLogado && !confirmando ? (
                     <div className={styles.confirmBox} style={{ gap: "0.5rem" }}>
-                      <p className={styles.confirmBoxLabel}>Olá, <strong>{jogadorLogado.nome}</strong>! Vai no jogo?</p>
+                      <p className={styles.confirmBoxLabel}>
+                        Olá, <strong>{jogadorLogado.nome}</strong>!{" "}
+                        {presencaLogado != null
+                          ? presencaLogado.confirmado
+                            ? "✅ Você confirmou presença."
+                            : "❌ Você marcou ausência."
+                          : "Vai no jogo?"}
+                      </p>
                       {adicionandoConvidado && (
                         <input
                           className={styles.emailInput}
@@ -383,10 +395,20 @@ export default function Publica() {
                         />
                       )}
                       <div className={styles.confirmBtns}>
-                        <button className={styles.btnVou} onClick={() => confirmarPresenca(true)} disabled={loadingConf}>
+                        <button
+                          className={styles.btnVou}
+                          onClick={() => confirmarPresenca(true)}
+                          disabled={loadingConf}
+                          style={presencaLogado?.confirmado === true ? { outline: "2px solid var(--confirm)" } : undefined}
+                        >
                           ✅ Vou!
                         </button>
-                        <button className={styles.btnNaoVou} onClick={() => confirmarPresenca(false)} disabled={loadingConf}>
+                        <button
+                          className={styles.btnNaoVou}
+                          onClick={() => confirmarPresenca(false)}
+                          disabled={loadingConf}
+                          style={presencaLogado?.confirmado === false ? { outline: "2px solid var(--absent)" } : undefined}
+                        >
                           ❌ Não vou
                         </button>
                       </div>
@@ -566,7 +588,7 @@ export default function Publica() {
       </main>
 
       <footer className={styles.footer}>
-        PatotaOFC · <a href="/login" className={styles.footerLink}>Área admin</a>
+        PatotaOFC{usuario?.role === "admin" && <> · <a href="/admin" className={styles.footerLink}>Área admin</a></>}
       </footer>
     </div>
   )
