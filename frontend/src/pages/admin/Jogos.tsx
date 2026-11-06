@@ -87,7 +87,7 @@ export default function Jogos() {
       .from("jogos")
       .select("*")
       .eq("patota_id", patotatId)
-      .order("data", { ascending: false })
+      .order("data", { ascending: true })
     setJogos(data ?? [])
     setLoading(false)
   }
