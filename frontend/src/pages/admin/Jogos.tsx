@@ -107,12 +107,12 @@ export default function Jogos() {
       .select("id, jogo_id, nome_convidado")
       .in("jogo_id", jogoIds)
       .eq("convidado", true)
-      .eq("confirmado", false)
+      .eq("aprovado", false)
     setConvidadosPendentes((data ?? []).filter(d => d.nome_convidado) as ConvidadoPendente[])
   }
 
   async function aprovarConvidado(id: string) {
-    await supabase.from("presencas").update({ confirmado: true }).eq("id", id)
+    await supabase.from("presencas").update({ aprovado: true }).eq("id", id)
     if (usuario?.patota_id) await carregarConvidados(usuario.patota_id)
   }
 

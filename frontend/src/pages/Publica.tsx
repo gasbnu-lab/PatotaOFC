@@ -30,6 +30,7 @@ type Presenca = {
   nome_convidado: string | null
   confirmado: boolean
   convidado: boolean
+  aprovado: boolean
   jogadores?: { nome: string } | null
 }
 
@@ -213,13 +214,14 @@ export default function Publica() {
       await supabase.from("presencas").insert({ jogo_id: jogo.id, jogador_id: jogador.id, confirmado: confirmar })
     }
 
-    // Adicionar convidado se informado — fica pendente até admin aprovar
+    // Adicionar convidado — confirmado mas pendente de aprovação pelo admin
     if (confirmar && convidadoNome.trim()) {
       await supabase.from("presencas").insert({
         jogo_id: jogo.id,
         nome_convidado: convidadoNome.trim(),
         convidado: true,
-        confirmado: false,
+        confirmado: true,
+        aprovado: false,
       })
     }
 
@@ -237,8 +239,8 @@ export default function Publica() {
     setTimeout(() => setToast(""), 3500)
   }
 
-  // Convidados só aparecem depois de aprovados pelo admin (confirmado: true)
-  const confirmados = presencas.filter(p => p.confirmado)
+  // Convidados só aparecem na lista pública depois de aprovados pelo admin
+  const confirmados = presencas.filter(p => p.confirmado && (!p.convidado || p.aprovado))
   const ausentes = presencas.filter(p => !p.confirmado && !p.convidado)
   const pendentes = jogadores.filter(j => !presencas.some(p => p.jogador_id === j.id))
 
