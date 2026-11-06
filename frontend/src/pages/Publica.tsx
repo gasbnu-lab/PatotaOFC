@@ -201,15 +201,24 @@ export default function Publica() {
       return
     }
 
-    const { error: errConf } = await supabase
+    const { data: exist } = await supabase
       .from("presencas")
-      .upsert(
-        { jogo_id: jogo.id, jogador_id: jogador.id, confirmado: confirmar },
-        { onConflict: "jogo_id,jogador_id" }
-      )
+      .select("id")
+      .eq("jogo_id", jogo.id)
+      .eq("jogador_id", jogador.id)
+      .maybeSingle()
 
-    if (errConf) {
-      showToast("Erro ao confirmar presença 😕")
+    let dbError
+    if (exist) {
+      const { error } = await supabase.from("presencas").update({ confirmado: confirmar }).eq("id", exist.id)
+      dbError = error
+    } else {
+      const { error } = await supabase.from("presencas").insert({ jogo_id: jogo.id, jogador_id: jogador.id, confirmado: confirmar })
+      dbError = error
+    }
+
+    if (dbError) {
+      showToast(`Erro: ${dbError.message}`)
       setLoadingConf(false)
       return
     }
