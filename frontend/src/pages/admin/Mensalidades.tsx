@@ -122,8 +122,17 @@ export default function Mensalidades() {
     setAtualizando(null)
   }
 
-  async function excluir(id: string) {
-    await supabase.from("mensalidades").delete().eq("id", id)
+  async function excluir(m: Mensalidade) {
+    // Se estava paga, remove o lançamento correspondente no financeiro
+    if (m.pago && usuario?.patota_id) {
+      const descricao = `Mensalidade ${mesNome(m.mes_ref)} — ${m.jogadores?.nome ?? "Jogador"}`
+      await supabase.from("lancamentos")
+        .delete()
+        .eq("patota_id", usuario.patota_id)
+        .eq("descricao", descricao)
+        .eq("tipo", "entrada")
+    }
+    await supabase.from("mensalidades").delete().eq("id", m.id)
     setConfirmDelId(null)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
   }
@@ -251,7 +260,7 @@ export default function Mensalidades() {
                             </button>
                             {confirmDelId === m.id ? (
                               <>
-                                <button onClick={() => excluir(m.id)} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
+                                <button onClick={() => excluir(m)} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
                                   Confirmar
                                 </button>
                                 <button className={s.btnSecondary} style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }} onClick={() => setConfirmDelId(null)}>✕</button>
