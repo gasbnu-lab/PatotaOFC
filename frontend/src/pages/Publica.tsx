@@ -375,7 +375,8 @@ export default function Publica() {
         {churrascoAtual && (
           <div
             className={styles.churrCard}
-            onClick={() => {/* futuro: navegar para página pública de churrasco */}}
+            style={{ cursor: "pointer" }}
+            onClick={() => navigate(`/p/${slug}/churrasco/${churrascoAtual.id}`)}
           >
             <span style={{ fontSize: "1.5rem" }}>🥩</span>
             <div className={styles.churrTextos}>

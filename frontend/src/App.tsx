@@ -9,7 +9,9 @@ import Dashboard from "./pages/admin/Dashboard"
 import Jogadores from "./pages/admin/Jogadores"
 import Jogos from "./pages/admin/Jogos"
 import Mensalidades from "./pages/admin/Mensalidades"
-import { ConvidadosPage, ChurrascosPage } from "./pages/admin/Stub"
+import { ConvidadosPage } from "./pages/admin/Stub"
+import Churrascos from "./pages/admin/Churrascos"
+import ChurrascoPublico from "./pages/ChurrascoPublico"
 import Financeiro from "./pages/admin/Financeiro"
 import Config from "./pages/admin/Config"
 import Perfil from "./pages/admin/Perfil"
@@ -58,6 +60,7 @@ export default function App() {
         <Route path="/" element={<HomeRedirect />} />
         <Route path="/p/:slug" element={<Publica />} />
         <Route path="/p/:slug/sorteio" element={<SorteioPublico />} />
+        <Route path="/p/:slug/churrasco/:churrasco_id" element={<ChurrascoPublico />} />
         <Route path="/login" element={<Login />} />
         <Route path="/aguardando" element={<Aguardando />} />
         <Route path="/home" element={<Home />} />
@@ -68,7 +71,7 @@ export default function App() {
           <Route path="sorteio" element={<Sorteio />} />
           <Route path="convidados" element={<ConvidadosPage />} />
           <Route path="mensalidades" element={<Mensalidades />} />
-          <Route path="churrascos" element={<ChurrascosPage />} />
+          <Route path="churrascos" element={<Churrascos />} />
           <Route path="financeiro" element={<Financeiro />} />
           <Route path="config" element={<Config />} />
           <Route path="perfil" element={<Perfil />} />
