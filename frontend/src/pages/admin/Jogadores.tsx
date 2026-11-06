@@ -13,6 +13,14 @@ type Jogador = {
   isento: boolean
 }
 
+type UsuarioAcesso = {
+  id: string
+  nome: string
+  email: string | null
+  role: "membro" | "admin"
+  status: string
+}
+
 type Form = { nome: string; email: string; posicao: string; nota: string; isento: boolean }
 
 function iniciais(nome: string) {
@@ -31,13 +39,18 @@ export default function Jogadores() {
   const [form, setForm] = useState<Form>(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
+  const [usuarios, setUsuarios] = useState<UsuarioAcesso[]>([])
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   const adminEhJogador = jogadores.some(
     j => j.email && usuario?.email && j.email.toLowerCase() === usuario.email.toLowerCase()
   )
 
   useEffect(() => {
-    if (usuario?.patota_id) carregar(usuario.patota_id)
+    if (usuario?.patota_id) {
+      carregar(usuario.patota_id)
+      carregarUsuarios(usuario.patota_id)
+    }
   }, [usuario?.patota_id])
 
   async function carregar(patotatId: number) {
@@ -45,6 +58,24 @@ export default function Jogadores() {
     const { data } = await supabase.from("jogadores").select("*").eq("patota_id", patotatId).order("nome")
     setJogadores(data ?? [])
     setLoading(false)
+  }
+
+  async function carregarUsuarios(patotatId: number) {
+    const { data } = await supabase
+      .from("usuarios")
+      .select("id, nome, email, role, status")
+      .eq("patota_id", patotatId)
+      .order("nome")
+    setUsuarios((data ?? []) as UsuarioAcesso[])
+  }
+
+  async function toggleRole(u: UsuarioAcesso) {
+    if (u.id === usuario?.id) return
+    setTogglingId(u.id)
+    const novoRole = u.role === "admin" ? "membro" : "admin"
+    await supabase.from("usuarios").update({ role: novoRole }).eq("id", u.id)
+    setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, role: novoRole } : x))
+    setTogglingId(null)
   }
 
   function abrirNovo() {
@@ -192,6 +223,74 @@ export default function Jogadores() {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div style={{ marginTop: "2rem" }}>
+        <div className={s.pageHeader} style={{ marginBottom: "0.75rem" }}>
+          <div>
+            <h2 className={s.pageTitulo} style={{ fontSize: "1.1rem" }}>Acesso ao sistema</h2>
+            <div className={s.pageSubtitulo}>{usuarios.length} usuário{usuarios.length !== 1 ? "s" : ""} cadastrado{usuarios.length !== 1 ? "s" : ""}</div>
+          </div>
+        </div>
+        <div className={s.card}>
+          {usuarios.length === 0 ? (
+            <div className={s.empty}>Nenhum usuário cadastrado ainda.</div>
+          ) : (
+            <table className={s.table}>
+              <thead>
+                <tr>
+                  <th>Usuário</th>
+                  <th>Status</th>
+                  <th>Acesso</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {usuarios.map(u => (
+                  <tr key={u.id}>
+                    <td>
+                      <div>
+                        <div style={{ fontWeight: 500, color: "var(--text)" }}>{u.nome}</div>
+                        {u.email && <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{u.email}</div>}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={u.status === "aprovado" ? s.badgeConfirmado : u.status === "pendente" ? s.badgePendente : s.badgeCancelado}>
+                        {u.status}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{
+                        fontSize: "0.78rem",
+                        padding: "0.2rem 0.6rem",
+                        borderRadius: 5,
+                        background: u.role === "admin" ? "#dbeafe" : "#f3f4f6",
+                        color: u.role === "admin" ? "#1d4ed8" : "#6b7280",
+                        fontWeight: u.role === "admin" ? 700 : 400,
+                      }}>
+                        {u.role === "admin" ? "Admin" : "Membro"}
+                      </span>
+                    </td>
+                    <td>
+                      {u.id !== usuario?.id ? (
+                        <button
+                          className={s.btnSecondary}
+                          style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }}
+                          onClick={() => toggleRole(u)}
+                          disabled={togglingId === u.id}
+                        >
+                          {togglingId === u.id ? "..." : u.role === "admin" ? "Remover admin" : "Dar admin"}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Você</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {modal && (
