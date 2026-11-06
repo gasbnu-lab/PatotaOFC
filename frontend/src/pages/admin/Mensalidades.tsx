@@ -17,13 +17,15 @@ type Jogador = { id: string; nome: string; isento: boolean }
 function statusMens(mes_ref: string, pago: boolean) {
   if (pago) return "pago"
   const hoje = new Date()
-  const [a, m] = mes_ref.split("-").map(Number)
+  const parts = mes_ref.split("-").map(Number)
+  const [a, m] = parts
   return hoje > new Date(a, m - 1, 9) ? "atrasado" : "pendente"
 }
 
 function mesNome(iso: string) {
   const nomes = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"]
-  return nomes[parseInt(iso.split("-")[1]) - 1] + "/" + iso.split("-")[0]
+  const parts = iso.split("-")
+  return nomes[parseInt(parts[1]) - 1] + "/" + parts[0]
 }
 
 export default function Mensalidades() {
@@ -120,9 +122,9 @@ export default function Mensalidades() {
     setSalvando(true)
     await supabase.from("mensalidades").insert({
       jogador_id: fJogador,
-      mes_ref: fMes,
+      mes_ref: fMes + "-01",
       pago: false,
-      valor: fValor ? parseFloat(fValor) : (valorPadrao ?? null),
+      valor: fValor ? parseFloat(fValor) : (valorPadrao ?? 0),
       patota_id: usuario.patota_id,
     })
     setSalvando(false)
@@ -140,7 +142,7 @@ export default function Mensalidades() {
       .from("mensalidades")
       .select("jogador_id")
       .eq("patota_id", usuario.patota_id)
-      .eq("mes_ref", recMes)
+      .eq("mes_ref", recMes + "-01")
 
     const existentesIds = new Set((existentes ?? []).map(e => e.jogador_id))
     const novos = jogadores.filter(j => !existentesIds.has(j.id) && !j.isento)
@@ -154,11 +156,13 @@ export default function Mensalidades() {
     }
 
     const patoId = usuario.patota_id
+    const mesDate = recMes + "-01"  // date column needs full date
+    const valorFinal = valorPadrao ?? 0
     const rows = novos.map(j => ({
       jogador_id: j.id,
-      mes_ref: recMes,
+      mes_ref: mesDate,
       pago: false,
-      valor: valorPadrao ?? null,
+      valor: valorFinal,
       patota_id: patoId,
     }))
 
