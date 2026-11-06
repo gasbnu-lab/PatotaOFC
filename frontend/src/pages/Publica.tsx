@@ -172,8 +172,9 @@ export default function Publica() {
   }
 
   // Jogador logado (sessão ativa na patota)
-  const jogadorLogado = session?.user?.email
-    ? jogadores.find(j => j.email?.toLowerCase() === session.user.email.toLowerCase()) ?? null
+  const sessionEmail = session?.user?.email ?? null
+  const jogadorLogado = sessionEmail
+    ? jogadores.find(j => j.email?.toLowerCase() === sessionEmail.toLowerCase()) ?? null
     : null
 
   async function confirmarPresenca(confirmar: boolean) {
