@@ -7,9 +7,8 @@ type Jogador = {
   id: string
   nome: string
   email: string | null
-  apelido: string | null
   posicao: string | null
-  nivel: number | null
+  nota: number | null
   ativo: boolean
 }
 
@@ -23,7 +22,7 @@ export default function Jogadores() {
   const [jogadores, setJogadores] = useState<Jogador[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ nome: "", email: "", apelido: "", posicao: "", nivel: "3" })
+  const [form, setForm] = useState({ nome: "", email: "", posicao: "qualquer", nota: "5" })
   const [salvando, setSalvando] = useState(false)
 
   const adminEhJogador = jogadores.some(
@@ -45,9 +44,8 @@ export default function Jogadores() {
     setForm({
       nome: usuario?.nome ?? "",
       email: usuario?.email ?? "",
-      apelido: "",
-      posicao: "",
-      nivel: "3",
+      posicao: "qualquer",
+      nota: "5",
     })
     setModal(true)
   }
@@ -58,13 +56,12 @@ export default function Jogadores() {
     await supabase.from("jogadores").insert({
       nome: form.nome.trim(),
       email: form.email.trim() || null,
-      apelido: form.apelido.trim() || null,
-      posicao: form.posicao || null,
-      nivel: form.nivel ? parseInt(form.nivel) : null,
+      posicao: form.posicao || "qualquer",
+      nota: form.nota ? parseInt(form.nota) : 5,
       ativo: true,
       patota_id: usuario.patota_id,
     })
-    setForm({ nome: "", email: "", apelido: "", posicao: "", nivel: "3" })
+    setForm({ nome: "", email: "", posicao: "qualquer", nota: "5" })
     setModal(false)
     setSalvando(false)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
@@ -145,13 +142,12 @@ export default function Jogadores() {
                       <div className={s.avatar}>{iniciais(j.nome)}</div>
                       <div>
                         <div style={{ fontWeight: 500, color: "var(--text)" }}>{j.nome}</div>
-                        {j.apelido && <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{j.apelido}</div>}
                       </div>
                     </div>
                   </td>
                   <td>{j.email ?? "—"}</td>
                   <td>{j.posicao ?? "—"}</td>
-                  <td>{j.nivel ?? "—"}</td>
+                  <td>{j.nota ?? "—"}</td>
                   <td>
                     <span className={j.ativo ? s.badgeConfirmado : s.badgeCancelado}>
                       {j.ativo ? "Ativo" : "Inativo"}
@@ -183,24 +179,17 @@ export default function Jogadores() {
                   <input className={s.formInput} type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} placeholder="jogador@email.com" />
                 </div>
                 <div className={s.formGroup}>
-                  <label className={s.formLabel}>Apelido</label>
-                  <input className={s.formInput} value={form.apelido} onChange={e => setForm(f => ({...f, apelido: e.target.value}))} placeholder="Rafael" />
-                </div>
-                <div className={s.formGroup}>
                   <label className={s.formLabel}>Posição</label>
                   <select className={s.formSelect} value={form.posicao} onChange={e => setForm(f => ({...f, posicao: e.target.value}))}>
-                    <option value="">—</option>
-                    <option value="Goleiro">Goleiro</option>
-                    <option value="Zagueiro">Zagueiro</option>
-                    <option value="Lateral">Lateral</option>
-                    <option value="Meia">Meia</option>
-                    <option value="Atacante">Atacante</option>
+                    <option value="qualquer">Qualquer</option>
+                    <option value="goleiro">Goleiro</option>
+                    <option value="linha">Linha</option>
                   </select>
                 </div>
                 <div className={s.formGroup}>
-                  <label className={s.formLabel}>Nível (1–5)</label>
-                  <select className={s.formSelect} value={form.nivel} onChange={e => setForm(f => ({...f, nivel: e.target.value}))}>
-                    {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                  <label className={s.formLabel}>Nota (1–10)</label>
+                  <select className={s.formSelect} value={form.nota} onChange={e => setForm(f => ({...f, nota: e.target.value}))}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
               </div>
