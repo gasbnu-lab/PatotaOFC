@@ -1,0 +1,227 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+}
+
+:global([data-theme="dark"]) .shell {
+  background: #111111;
+}
+
+/* ── Header mobile ── */
+.header {
+  display: none;
+  align-items: center;
+  background: #111111;
+  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.menuBtn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+}
+
+.headerLogo {
+  width: 28px;
+  height: 28px;
+  background: #FFD600;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #111;
+  flex-shrink: 0;
+}
+
+.headerTitulo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.headerAppNome {
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.headerNomeTime {
+  color: #FFD600;
+  font-size: 0.65rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.sairBtnMobile {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  padding: 0.3rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+/* ── Body ── */
+.body {
+  display: flex;
+  flex: 1;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 220px;
+  min-height: 100vh;
+  background: #111111;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 0 1rem;
+  flex-shrink: 0;
+}
+
+.sidebarTopo {
+  padding: 0 1.1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sidebarLogo {
+  width: 32px;
+  height: 32px;
+  background: #FFD600;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #111;
+  flex-shrink: 0;
+}
+
+.sidebarTitulos {}
+
+.sidebarAppNome {
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.sidebarNomeTime {
+  color: #FFD600;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.navSecLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #555;
+  text-transform: uppercase;
+  padding: 0.5rem 1.1rem 0.3rem;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1.1rem;
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  color: #aaaaaa;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s, color 0.12s;
+}
+
+.navItem:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+
+.navAtivo {
+  background: rgba(255,214,0,0.08) !important;
+  color: #FFD600 !important;
+  border-left-color: #FFD600 !important;
+  font-weight: 600;
+}
+
+.navIcon {
+  font-size: 1rem;
+  width: 1.4rem;
+  text-align: center;
+}
+
+.navSair {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1.1rem;
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  color: #555;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.navSair:hover { color: #888; }
+
+/* ── Overlay mobile ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 90;
+}
+
+/* ── Conteúdo ── */
+.conteudo {
+  flex: 1;
+  padding: 2rem 2rem 2rem;
+  min-width: 0;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .header { display: flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -220px;
+    height: 100vh;
+    z-index: 100;
+    transition: left 0.22s ease;
+    padding-top: 1rem;
+  }
+
+  .sidebarAberta { left: 0; }
+  .overlay { display: block; }
+  .conteudo { padding: 1.25rem 1rem; }
+}

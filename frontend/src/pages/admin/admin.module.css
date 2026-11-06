@@ -1,0 +1,336 @@
+/* Tokens compartilhados pelo admin */
+.page {
+  --accent: #FFD600;
+  --accent-fg: #111;
+  --header-bg: #111;
+  --text: #111;
+  --text2: #444;
+  --muted: #888;
+  --surface: #fff;
+  --surface2: #f9f9f9;
+  --border: #e8e8e8;
+  --radius: 12px;
+  --confirm: #16a34a;
+  --danger: #dc2626;
+  --warning: #d97706;
+}
+
+:global([data-theme="dark"]) .page {
+  --text: #fff;
+  --text2: #ccc;
+  --muted: #777;
+  --surface: #1c1c1c;
+  --surface2: #222;
+  --border: #2a2a2a;
+}
+
+/* ── Cabeçalho da seção ── */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.pageTitulo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.pageSubtitulo {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+/* ── Botão primário ── */
+.btnPrimary {
+  padding: 0.6rem 1.2rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnPrimary:hover { opacity: 0.85; }
+
+/* ── Botão secundário ── */
+.btnSecondary {
+  padding: 0.55rem 1rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnSecondary:hover { background: var(--surface2); }
+
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.cardPad { padding: 1.1rem 1.25rem; }
+
+.cardTitulo {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+
+/* ── Stat cards ── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.statCard {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 1.1rem 1.25rem;
+}
+
+.statLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.statValor {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── Grade 2 colunas ── */
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* ── Tabela ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.table th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.table td {
+  padding: 0.65rem 1rem;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+
+.table tr:last-child td { border-bottom: none; }
+
+.table tr:hover td { background: var(--surface2); }
+
+/* ── Valor positivo / negativo ── */
+.plus { color: var(--confirm); font-weight: 600; }
+.minus { color: var(--danger); font-weight: 600; }
+
+/* ── Badge ── */
+.badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badgePago { background: #d1fae5; color: #065f46; }
+.badgePendente { background: #fef9c3; color: #854d0e; }
+.badgeAtrasado { background: #fee2e2; color: #991b1b; }
+.badgeAgendado { background: #dbeafe; color: #1e40af; }
+.badgeConfirmado { background: #d1fae5; color: #065f46; }
+.badgeRealizado { background: #e5e7eb; color: #374151; }
+.badgeCancelado { background: #fee2e2; color: #991b1b; }
+
+:global([data-theme="dark"]) .badgePago { background: #052e16; color: #4ade80; }
+:global([data-theme="dark"]) .badgePendente { background: #2a1a00; color: #FFD600; }
+:global([data-theme="dark"]) .badgeAtrasado { background: #2a0a0a; color: #f87171; }
+:global([data-theme="dark"]) .badgeAgendado { background: #1e3a5f; color: #93c5fd; }
+:global([data-theme="dark"]) .badgeConfirmado { background: #052e16; color: #4ade80; }
+:global([data-theme="dark"]) .badgeRealizado { background: #333; color: #ccc; }
+
+/* ── Avatar ── */
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #111;
+  color: #FFD600;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+:global([data-theme="dark"]) .avatar {
+  background: #2a2a2a;
+}
+
+/* ── Row de aprovação ── */
+.aprovRow {
+  padding: 0.75rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.aprovRow:last-child { border-bottom: none; }
+
+.aprovNome { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.aprovInfo { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.5rem; }
+
+.aprovBtns { display: flex; gap: 0.5rem; }
+
+.btnAprovar {
+  padding: 0.4rem 1rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnRecusar {
+  padding: 0.4rem 1rem;
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+/* ── Empty ── */
+.empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ── Form ── */
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 500px) { .formGrid { grid-template-columns: 1fr; } }
+
+.formGroup { display: flex; flex-direction: column; gap: 0.3rem; }
+.formGroup.full { grid-column: 1 / -1; }
+
+.formLabel {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+
+.formInput,
+.formSelect {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color 0.15s;
+}
+
+.formInput:focus, .formSelect:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ── Modal ── */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 440px;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modalTitulo { font-size: 1rem; font-weight: 600; color: var(--text); }
+
+.modalClose {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.2rem;
+}
+
+.modalBody { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+.modalFooter {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

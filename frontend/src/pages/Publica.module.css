@@ -1,0 +1,518 @@
+/* ── Design tokens ── */
+.container {
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --surface2: #f9f9f9;
+  --header-bg: #111111;
+  --accent: #FFD600;
+  --accent-fg: #111111;
+  --text: #111111;
+  --text2: #444444;
+  --muted: #888888;
+  --border: #e8e8e8;
+  --radius: 12px;
+  --confirm: #16a34a;
+  --absent: #dc2626;
+  --pending: #d97706;
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Dark mode override */
+:global([data-theme="dark"]) .container {
+  --bg: #111111;
+  --surface: #1c1c1c;
+  --surface2: #222222;
+  --header-bg: #0a0a0a;
+  --text: #ffffff;
+  --text2: #cccccc;
+  --muted: #777777;
+  --border: #2a2a2a;
+}
+
+/* ── Loading ── */
+.loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: var(--muted);
+  background: var(--bg);
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--accent-fg);
+  padding: 0.65rem 1.4rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 999;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  white-space: nowrap;
+  animation: fadeUp 0.2s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+}
+
+/* ── Header ── */
+.header {
+  background: var(--header-bg);
+  padding: 1rem 1.25rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.headerInner {
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logoBox {
+  width: 36px;
+  height: 36px;
+  background: var(--accent);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-fg);
+  flex-shrink: 0;
+}
+
+.headerTextos {
+  flex: 1;
+}
+
+.appNome {
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.nomeTime {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.headerAcoes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.darkBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.darkBtn:hover { background: rgba(255,255,255,0.18); }
+
+/* ── Main layout ── */
+.main {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.cardPad {
+  padding: 1.1rem 1.25rem;
+}
+
+.secLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+  text-transform: uppercase;
+}
+
+/* ── Próximo jogo ── */
+.jogoBanner {
+  background: var(--accent);
+  padding: 1rem 1.25rem;
+}
+
+.jogoBannerLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(0,0,0,0.5);
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.jogoDataHora {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent-fg);
+  line-height: 1.2;
+}
+
+.jogoLocal {
+  font-size: 0.82rem;
+  color: rgba(0,0,0,0.6);
+  margin-top: 0.2rem;
+}
+
+.jogoVazio { color: var(--muted); font-size: 0.9rem; }
+
+/* ── Stats ── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.stat {
+  padding: 0.9rem 0.5rem;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+
+.stat:last-child { border-right: none; }
+
+.statNum {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 0.25rem;
+}
+
+/* ── Confirmação ── */
+.confirmBtn {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.15s;
+  border-top: 1px solid var(--border);
+}
+
+.confirmBtn:hover { background: var(--surface2); }
+
+.confirmIconBox {
+  width: 36px;
+  height: 36px;
+  background: var(--accent);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
+.confirmTextos { flex: 1; text-align: left; }
+.confirmTextos strong { font-size: 0.95rem; font-weight: 600; display: block; }
+.confirmTextos span { font-size: 0.78rem; color: var(--muted); }
+
+.chevron { color: var(--muted); font-size: 0.85rem; }
+
+/* ── Box email confirmação ── */
+.confirmBox {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.confirmBoxLabel { font-size: 0.85rem; color: var(--text2); }
+
+.emailInput {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.emailInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.confirmBtns {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.5rem;
+}
+
+.btnVou {
+  padding: 0.65rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnNaoVou {
+  padding: 0.65rem;
+  background: var(--surface);
+  color: var(--absent);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnVou:hover:not(:disabled) { opacity: 0.85; }
+.btnNaoVou:hover:not(:disabled) { background: var(--surface2); }
+.btnVou:disabled, .btnNaoVou:disabled { opacity: 0.5; cursor: default; }
+
+.btnVoltar {
+  padding: 0.65rem 0.75rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* ── Lista presença ── */
+.presencaListas {
+  padding: 0.75rem 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.listaGrupo { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.listaGrupoLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.15rem;
+}
+
+.listaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  font-size: 0.88rem;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+
+.listaItem:last-child { border-bottom: none; }
+
+.miniAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--header-bg);
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+:global([data-theme="dark"]) .miniAvatar {
+  background: #2a2a2a;
+}
+
+.vazio { font-size: 0.85rem; color: var(--muted); font-style: italic; }
+
+/* ── Row link (sorteio etc) ── */
+.rowLink {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rowLink:hover { background: var(--surface2); }
+
+.rowIconBox {
+  width: 36px;
+  height: 36px;
+  background: var(--header-bg);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
+:global([data-theme="dark"]) .rowIconBox {
+  background: #2a2a2a;
+}
+
+.rowTextos { flex: 1; }
+.rowTextos strong { font-size: 0.95rem; font-weight: 600; display: block; color: var(--text); }
+.rowTextos span { font-size: 0.78rem; color: var(--muted); }
+
+/* ── Mensalidades ── */
+.mensRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.mensRow:last-child { border-bottom: none; }
+
+.mensAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--header-bg);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+:global([data-theme="dark"]) .mensAvatar {
+  background: #2a2a2a;
+}
+
+.mensNome { flex: 1; font-size: 0.9rem; color: var(--text); }
+
+.badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badgePago { background: #d1fae5; color: #065f46; }
+.badgePendente { background: #fef9c3; color: #854d0e; }
+.badgeAtrasado { background: #fee2e2; color: #991b1b; }
+
+:global([data-theme="dark"]) .badgePago { background: #052e16; color: #4ade80; }
+:global([data-theme="dark"]) .badgePendente { background: #2a1a00; color: #FFD600; }
+:global([data-theme="dark"]) .badgeAtrasado { background: #2a0a0a; color: #f87171; }
+
+.mensLegenda {
+  padding: 0.5rem 1.25rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ── Churrasco ── */
+.churrCard {
+  background: var(--accent);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+}
+
+.churrTextos strong { font-size: 0.95rem; font-weight: 700; color: var(--accent-fg); display: block; }
+.churrTextos span { font-size: 0.78rem; color: rgba(0,0,0,0.55); }
+
+/* ── Footer ── */
+.footer {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.footerLink { color: var(--muted); text-decoration: none; }
+.footerLink:hover { text-decoration: underline; }
