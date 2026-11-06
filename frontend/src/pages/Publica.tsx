@@ -223,6 +223,25 @@ export default function Publica() {
       return
     }
 
+    // Atualização otimista: reflete imediatamente na UI sem depender da recarga
+    setPresencas(prev => {
+      const idx = prev.findIndex(p => p.jogador_id === jogador.id)
+      if (idx >= 0) {
+        const updated = [...prev]
+        updated[idx] = { ...updated[idx], confirmado: confirmar }
+        return updated
+      }
+      return [...prev, {
+        id: `temp-${Date.now()}`,
+        jogador_id: jogador.id,
+        nome_convidado: null,
+        confirmado: confirmar,
+        convidado: false,
+        aprovado: false,
+        jogadores: { nome: jogador.nome },
+      }]
+    })
+
     // Adicionar convidado — confirmado mas pendente de aprovação pelo admin
     if (confirmar && convidadoNome.trim()) {
       await supabase.from("presencas").insert({
@@ -239,7 +258,8 @@ export default function Publica() {
     setConvidadoNome("")
     setAdicionandoConvidado(false)
     setConfirmando(false)
-    if (slug) await carregar(slug)
+    // Sincroniza com o servidor em background para substituir o estado otimista
+    if (slug) carregar(slug)
     setLoadingConf(false)
   }
 
