@@ -26,6 +26,10 @@ export default function Jogadores() {
   const [form, setForm] = useState({ nome: "", email: "", apelido: "", posicao: "", nivel: "3" })
   const [salvando, setSalvando] = useState(false)
 
+  const adminEhJogador = jogadores.some(
+    j => j.email && usuario?.email && j.email.toLowerCase() === usuario.email.toLowerCase()
+  )
+
   useEffect(() => {
     if (usuario?.patota_id) carregar(usuario.patota_id)
   }, [usuario?.patota_id])
@@ -35,6 +39,17 @@ export default function Jogadores() {
     const { data } = await supabase.from("jogadores").select("*").eq("patota_id", patotatId).order("nome")
     setJogadores(data ?? [])
     setLoading(false)
+  }
+
+  function abrirModalAdmin() {
+    setForm({
+      nome: usuario?.nome ?? "",
+      email: usuario?.email ?? "",
+      apelido: "",
+      posicao: "",
+      nivel: "3",
+    })
+    setModal(true)
   }
 
   async function salvar() {
@@ -71,6 +86,42 @@ export default function Jogadores() {
         </div>
         <button className={s.btnPrimary} onClick={() => setModal(true)}>+ Adicionar</button>
       </div>
+
+      {/* Banner: admin ainda não é jogador */}
+      {!loading && !adminEhJogador && (
+        <div style={{
+          background: "#fffbeb",
+          border: "1px solid #f59e0b",
+          borderRadius: 10,
+          padding: "0.9rem 1.1rem",
+          marginBottom: "1rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem",
+          flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: "1.2rem" }}>⚽</span>
+          <span style={{ flex: 1, fontSize: "0.9rem", color: "#92400e" }}>
+            Você ainda não está cadastrado como jogador da patota.
+          </span>
+          <button
+            onClick={abrirModalAdmin}
+            style={{
+              padding: "0.4rem 1rem",
+              background: "#f59e0b",
+              color: "#fff",
+              border: "none",
+              borderRadius: 7,
+              cursor: "pointer",
+              fontWeight: 700,
+              fontSize: "0.85rem",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Me cadastrar como jogador
+          </button>
+        </div>
+      )}
 
       <div className={s.card}>
         {jogadores.length === 0 ? (
