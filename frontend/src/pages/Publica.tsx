@@ -453,37 +453,53 @@ export default function Publica() {
                 </>
               )}
 
-              {/* Lista */}
-              {(confirmados.length > 0 || ausentes.length > 0) && (
-                <div className={styles.presencaListas}>
-                  {confirmados.length > 0 && (
-                    <div className={styles.listaGrupo}>
-                      <div className={styles.listaGrupoLabel} style={{ color: "var(--confirm)" }}>
-                        ✅ Confirmados ({confirmados.length})
-                      </div>
-                      {confirmados.map(p => (
-                        <div key={p.id} className={styles.listaItem}>
-                          <div className={styles.miniAvatar}>{iniciais(nomePresenca(p))}</div>
-                          {nomePresenca(p)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {ausentes.length > 0 && (
-                    <div className={styles.listaGrupo}>
-                      <div className={styles.listaGrupoLabel} style={{ color: "var(--absent)" }}>
-                        ❌ Não vão ({ausentes.length})
-                      </div>
-                      {ausentes.map(p => (
-                        <div key={p.id} className={styles.listaItem} style={{ opacity: 0.6 }}>
-                          <div className={styles.miniAvatar}>{iniciais(nomePresenca(p))}</div>
-                          {nomePresenca(p)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              {/* Lista da semana */}
+              <div className={styles.listaSemana}>
+                <div className={styles.listaSemanaHeader}>
+                  Lista da semana
+                  <span className={styles.listaSemanaContagem}>
+                    {confirmados.length} confirmados · {ausentes.length} ausentes · {pendentes.length} pendentes
+                  </span>
                 </div>
-              )}
+                <div className={styles.listaColunas}>
+                  <div className={styles.listaGrupo}>
+                    <div className={styles.listaGrupoLabel} style={{ color: "var(--confirm)" }}>
+                      ✅ Confirmados ({confirmados.length})
+                    </div>
+                    {confirmados.length === 0 && <div className={styles.listaVazio}>—</div>}
+                    {confirmados.map(p => (
+                      <div key={p.id} className={styles.listaItem}>
+                        <div className={styles.miniAvatar}>{iniciais(nomePresenca(p))}</div>
+                        <span>{nomePresenca(p)}{p.convidado && <span className={styles.tagConvidado}>conv.</span>}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={styles.listaGrupo}>
+                    <div className={styles.listaGrupoLabel} style={{ color: "var(--absent)" }}>
+                      ❌ Ausentes ({ausentes.length})
+                    </div>
+                    {ausentes.length === 0 && <div className={styles.listaVazio}>—</div>}
+                    {ausentes.map(p => (
+                      <div key={p.id} className={styles.listaItem} style={{ opacity: 0.6 }}>
+                        <div className={styles.miniAvatar}>{iniciais(nomePresenca(p))}</div>
+                        {nomePresenca(p)}
+                      </div>
+                    ))}
+                  </div>
+                  <div className={styles.listaGrupo}>
+                    <div className={styles.listaGrupoLabel} style={{ color: "var(--pending)" }}>
+                      ⏳ Pendentes ({pendentes.length})
+                    </div>
+                    {pendentes.length === 0 && <div className={styles.listaVazio}>—</div>}
+                    {pendentes.map(j => (
+                      <div key={j.id} className={styles.listaItem} style={{ opacity: 0.5 }}>
+                        <div className={styles.miniAvatar}>{iniciais(j.nome)}</div>
+                        {j.nome}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </>
           ) : (
             <div className={styles.cardPad}>
