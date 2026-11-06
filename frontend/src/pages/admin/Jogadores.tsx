@@ -12,18 +12,24 @@ type Jogador = {
   ativo: boolean
 }
 
+type Form = { nome: string; email: string; posicao: string; nota: string }
+
 function iniciais(nome: string) {
   const p = nome.split(" ")
   return (p[0][0] + (p[1]?.[0] ?? "")).toUpperCase()
 }
+
+const FORM_VAZIO: Form = { nome: "", email: "", posicao: "qualquer", nota: "5" }
 
 export default function Jogadores() {
   const { usuario } = useAuth()
   const [jogadores, setJogadores] = useState<Jogador[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ nome: "", email: "", posicao: "qualquer", nota: "5" })
+  const [editando, setEditando] = useState<Jogador | null>(null)
+  const [form, setForm] = useState<Form>(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
+  const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
 
   const adminEhJogador = jogadores.some(
     j => j.email && usuario?.email && j.email.toLowerCase() === usuario.email.toLowerCase()
@@ -40,35 +46,53 @@ export default function Jogadores() {
     setLoading(false)
   }
 
+  function abrirNovo() {
+    setEditando(null)
+    setForm(FORM_VAZIO)
+    setModal(true)
+  }
+
+  function abrirEditar(j: Jogador) {
+    setEditando(j)
+    setForm({ nome: j.nome, email: j.email ?? "", posicao: j.posicao ?? "qualquer", nota: String(j.nota ?? 5) })
+    setModal(true)
+  }
+
   function abrirModalAdmin() {
-    setForm({
-      nome: usuario?.nome ?? "",
-      email: usuario?.email ?? "",
-      posicao: "qualquer",
-      nota: "5",
-    })
+    setEditando(null)
+    setForm({ nome: usuario?.nome ?? "", email: usuario?.email ?? "", posicao: "qualquer", nota: "5" })
     setModal(true)
   }
 
   async function salvar() {
     if (!form.nome.trim() || !usuario?.patota_id) return
     setSalvando(true)
-    await supabase.from("jogadores").insert({
+    const payload = {
       nome: form.nome.trim(),
       email: form.email.trim() || null,
       posicao: form.posicao || "qualquer",
       nota: form.nota ? parseInt(form.nota) : 5,
-      ativo: true,
-      patota_id: usuario.patota_id,
-    })
-    setForm({ nome: "", email: "", posicao: "qualquer", nota: "5" })
+    }
+    if (editando) {
+      await supabase.from("jogadores").update(payload).eq("id", editando.id)
+    } else {
+      await supabase.from("jogadores").insert({ ...payload, ativo: true, patota_id: usuario.patota_id })
+    }
     setModal(false)
+    setEditando(null)
+    setForm(FORM_VAZIO)
     setSalvando(false)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
   }
 
   async function toggleAtivo(id: string, ativo: boolean) {
     await supabase.from("jogadores").update({ ativo: !ativo }).eq("id", id)
+    if (usuario?.patota_id) await carregar(usuario.patota_id)
+  }
+
+  async function excluir(id: string) {
+    await supabase.from("jogadores").delete().eq("id", id)
+    setConfirmDelId(null)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
   }
 
@@ -81,40 +105,14 @@ export default function Jogadores() {
           <h1 className={s.pageTitulo}>Jogadores</h1>
           <div className={s.pageSubtitulo}>{jogadores.filter(j => j.ativo).length} ativos</div>
         </div>
-        <button className={s.btnPrimary} onClick={() => setModal(true)}>+ Adicionar</button>
+        <button className={s.btnPrimary} onClick={abrirNovo}>+ Adicionar</button>
       </div>
 
-      {/* Banner: admin ainda não é jogador */}
       {!loading && !adminEhJogador && (
-        <div style={{
-          background: "#fffbeb",
-          border: "1px solid #f59e0b",
-          borderRadius: 10,
-          padding: "0.9rem 1.1rem",
-          marginBottom: "1rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-          flexWrap: "wrap",
-        }}>
+        <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: 10, padding: "0.9rem 1.1rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
           <span style={{ fontSize: "1.2rem" }}>⚽</span>
-          <span style={{ flex: 1, fontSize: "0.9rem", color: "#92400e" }}>
-            Você ainda não está cadastrado como jogador da patota.
-          </span>
-          <button
-            onClick={abrirModalAdmin}
-            style={{
-              padding: "0.4rem 1rem",
-              background: "#f59e0b",
-              color: "#fff",
-              border: "none",
-              borderRadius: 7,
-              cursor: "pointer",
-              fontWeight: 700,
-              fontSize: "0.85rem",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <span style={{ flex: 1, fontSize: "0.9rem", color: "#92400e" }}>Você ainda não está cadastrado como jogador da patota.</span>
+          <button onClick={abrirModalAdmin} style={{ padding: "0.4rem 1rem", background: "#f59e0b", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontWeight: 700, fontSize: "0.85rem", whiteSpace: "nowrap" }}>
             Me cadastrar como jogador
           </button>
         </div>
@@ -130,28 +128,53 @@ export default function Jogadores() {
                 <th>Jogador</th>
                 <th>Email</th>
                 <th>Posição</th>
-                <th>Nível</th>
+                <th>Nota</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {jogadores.map(j => (
-                <tr key={j.id} style={{ cursor: "pointer" }} onClick={() => toggleAtivo(j.id, j.ativo)}>
+                <tr key={j.id} style={{ opacity: j.ativo ? 1 : 0.5 }}>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div className={s.avatar}>{iniciais(j.nome)}</div>
-                      <div>
-                        <div style={{ fontWeight: 500, color: "var(--text)" }}>{j.nome}</div>
-                      </div>
+                      <div style={{ fontWeight: 500, color: "var(--text)" }}>{j.nome}</div>
                     </div>
                   </td>
                   <td>{j.email ?? "—"}</td>
-                  <td>{j.posicao ?? "—"}</td>
+                  <td style={{ textTransform: "capitalize" }}>{j.posicao ?? "—"}</td>
                   <td>{j.nota ?? "—"}</td>
                   <td>
                     <span className={j.ativo ? s.badgeConfirmado : s.badgeCancelado}>
                       {j.ativo ? "Ativo" : "Inativo"}
                     </span>
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                      <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }} onClick={() => abrirEditar(j)}>
+                        Editar
+                      </button>
+                      <button
+                        className={s.btnSecondary}
+                        style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }}
+                        onClick={() => toggleAtivo(j.id, j.ativo)}
+                      >
+                        {j.ativo ? "Inativar" : "Ativar"}
+                      </button>
+                      {confirmDelId === j.id ? (
+                        <>
+                          <button onClick={() => excluir(j.id)} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
+                            Confirmar exclusão
+                          </button>
+                          <button className={s.btnSecondary} style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }} onClick={() => setConfirmDelId(null)}>✕</button>
+                        </>
+                      ) : (
+                        <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", color: "#dc2626" }} onClick={() => setConfirmDelId(j.id)}>
+                          Excluir
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -160,12 +183,11 @@ export default function Jogadores() {
         )}
       </div>
 
-      {/* Modal */}
       {modal && (
         <div className={s.modalBackdrop} onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className={s.modal}>
             <div className={s.modalHeader}>
-              <span className={s.modalTitulo}>Novo jogador</span>
+              <span className={s.modalTitulo}>{editando ? "Editar jogador" : "Novo jogador"}</span>
               <button className={s.modalClose} onClick={() => setModal(false)}>✕</button>
             </div>
             <div className={s.modalBody}>
@@ -197,7 +219,7 @@ export default function Jogadores() {
             <div className={s.modalFooter}>
               <button className={s.btnSecondary} onClick={() => setModal(false)}>Cancelar</button>
               <button className={s.btnPrimary} onClick={salvar} disabled={salvando}>
-                {salvando ? "Salvando..." : "Salvar"}
+                {salvando ? "Salvando..." : editando ? "Salvar alterações" : "Adicionar"}
               </button>
             </div>
           </div>

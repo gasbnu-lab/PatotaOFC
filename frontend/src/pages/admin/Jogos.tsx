@@ -12,6 +12,10 @@ type Jogo = {
   max_jogadores: number | null
 }
 
+type Form = { data: string; horario: string; local: string; max_jogadores: string; status: string }
+
+const FORM_VAZIO: Form = { data: "", horario: "10:00", local: "", max_jogadores: "14", status: "agendado" }
+
 const STATUS_LABEL: Record<string, string> = {
   agendado: "Agendado",
   confirmado: "Confirmado",
@@ -24,8 +28,10 @@ export default function Jogos() {
   const [jogos, setJogos] = useState<Jogo[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ data: "", horario: "10:00", local: "", max_jogadores: "14" })
+  const [editando, setEditando] = useState<Jogo | null>(null)
+  const [form, setForm] = useState<Form>(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
+  const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
 
   useEffect(() => {
     if (usuario?.patota_id) carregar(usuario.patota_id)
@@ -38,25 +44,49 @@ export default function Jogos() {
     setLoading(false)
   }
 
+  function abrirNovo() {
+    setEditando(null)
+    setForm(FORM_VAZIO)
+    setModal(true)
+  }
+
+  function abrirEditar(j: Jogo) {
+    setEditando(j)
+    setForm({
+      data: j.data,
+      horario: j.horario.slice(0, 5),
+      local: j.local,
+      max_jogadores: j.max_jogadores ? String(j.max_jogadores) : "",
+      status: j.status,
+    })
+    setModal(true)
+  }
+
   async function salvar() {
     if (!form.data || !form.local.trim() || !usuario?.patota_id) return
     setSalvando(true)
-    await supabase.from("jogos").insert({
+    const payload = {
       data: form.data,
       horario: form.horario,
       local: form.local.trim(),
       max_jogadores: form.max_jogadores ? parseInt(form.max_jogadores) : null,
-      status: "agendado",
-      patota_id: usuario.patota_id,
-    })
-    setForm({ data: "", horario: "10:00", local: "", max_jogadores: "14" })
+      status: form.status,
+    }
+    if (editando) {
+      await supabase.from("jogos").update(payload).eq("id", editando.id)
+    } else {
+      await supabase.from("jogos").insert({ ...payload, patota_id: usuario.patota_id })
+    }
     setModal(false)
+    setEditando(null)
+    setForm(FORM_VAZIO)
     setSalvando(false)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
   }
 
-  async function mudarStatus(id: string, status: string) {
-    await supabase.from("jogos").update({ status }).eq("id", id)
+  async function excluir(id: string) {
+    await supabase.from("jogos").delete().eq("id", id)
+    setConfirmDelId(null)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
   }
 
@@ -74,7 +104,7 @@ export default function Jogos() {
           <h1 className={s.pageTitulo}>Jogos</h1>
           <div className={s.pageSubtitulo}>{jogos.length} no total</div>
         </div>
-        <button className={s.btnPrimary} onClick={() => setModal(true)}>+ Novo jogo</button>
+        <button className={s.btnPrimary} onClick={abrirNovo}>+ Novo jogo</button>
       </div>
 
       <div className={s.card}>
@@ -105,17 +135,23 @@ export default function Jogos() {
                     </span>
                   </td>
                   <td>
-                    <select
-                      className={s.formSelect}
-                      style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }}
-                      value={j.status}
-                      onChange={e => mudarStatus(j.id, e.target.value)}
-                    >
-                      <option value="agendado">Agendado</option>
-                      <option value="confirmado">Confirmado</option>
-                      <option value="realizado">Realizado</option>
-                      <option value="cancelado">Cancelado</option>
-                    </select>
+                    <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                      <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }} onClick={() => abrirEditar(j)}>
+                        Editar
+                      </button>
+                      {confirmDelId === j.id ? (
+                        <>
+                          <button onClick={() => excluir(j.id)} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
+                            Confirmar exclusão
+                          </button>
+                          <button className={s.btnSecondary} style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }} onClick={() => setConfirmDelId(null)}>✕</button>
+                        </>
+                      ) : (
+                        <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", color: "#dc2626" }} onClick={() => setConfirmDelId(j.id)}>
+                          Excluir
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -128,7 +164,7 @@ export default function Jogos() {
         <div className={s.modalBackdrop} onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className={s.modal}>
             <div className={s.modalHeader}>
-              <span className={s.modalTitulo}>Novo jogo</span>
+              <span className={s.modalTitulo}>{editando ? "Editar jogo" : "Novo jogo"}</span>
               <button className={s.modalClose} onClick={() => setModal(false)}>✕</button>
             </div>
             <div className={s.modalBody}>
@@ -149,12 +185,21 @@ export default function Jogos() {
                   <label className={s.formLabel}>Máx. jogadores</label>
                   <input className={s.formInput} type="number" value={form.max_jogadores} onChange={e => setForm(f => ({...f, max_jogadores: e.target.value}))} />
                 </div>
+                <div className={s.formGroup}>
+                  <label className={s.formLabel}>Status</label>
+                  <select className={s.formSelect} value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value}))}>
+                    <option value="agendado">Agendado</option>
+                    <option value="confirmado">Confirmado</option>
+                    <option value="realizado">Realizado</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
+                </div>
               </div>
             </div>
             <div className={s.modalFooter}>
               <button className={s.btnSecondary} onClick={() => setModal(false)}>Cancelar</button>
               <button className={s.btnPrimary} onClick={salvar} disabled={salvando}>
-                {salvando ? "Salvando..." : "Criar jogo"}
+                {salvando ? "Salvando..." : editando ? "Salvar alterações" : "Criar jogo"}
               </button>
             </div>
           </div>
