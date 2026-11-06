@@ -13,6 +13,12 @@ type Jogo = {
   confirmacao_ate: string | null
 }
 
+type ConvidadoPendente = {
+  id: string
+  jogo_id: string
+  nome_convidado: string
+}
+
 type Form = {
   data: string
   horario: string
@@ -53,9 +59,26 @@ export default function Jogos() {
   const [form, setForm] = useState<Form>(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
+  const [convidadosPendentes, setConvidadosPendentes] = useState<ConvidadoPendente[]>([])
+
+  // Modal recorrente
+  const [modalRec, setModalRec] = useState(false)
+  const [recDiaSemana, setRecDiaSemana] = useState("1") // 0=dom..6=sab, default segunda
+  const [recHorario, setRecHorario] = useState("20:00")
+  const [recLocal, setRecLocal] = useState("")
+  const [recMes, setRecMes] = useState(() => {
+    const h = new Date()
+    return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}`
+  })
+  const [recMaxJogadores, setRecMaxJogadores] = useState("14")
+  const [gerandoRec, setGerandoRec] = useState(false)
+  const [msgRec, setMsgRec] = useState<string | null>(null)
 
   useEffect(() => {
-    if (usuario?.patota_id) carregar(usuario.patota_id)
+    if (usuario?.patota_id) {
+      carregar(usuario.patota_id)
+      carregarConvidados(usuario.patota_id)
+    }
   }, [usuario?.patota_id])
 
   async function carregar(patotatId: number) {
@@ -67,6 +90,87 @@ export default function Jogos() {
       .order("data", { ascending: false })
     setJogos(data ?? [])
     setLoading(false)
+  }
+
+  async function carregarConvidados(patotatId: number) {
+    // Pega convidados pendentes de aprovação dos próximos jogos
+    const hoje = new Date().toISOString().split("T")[0]
+    const { data: jogosRecentes } = await supabase
+      .from("jogos")
+      .select("id")
+      .eq("patota_id", patotatId)
+      .gte("data", hoje)
+    const jogoIds = (jogosRecentes ?? []).map(j => j.id)
+    if (jogoIds.length === 0) { setConvidadosPendentes([]); return }
+    const { data } = await supabase
+      .from("presencas")
+      .select("id, jogo_id, nome_convidado")
+      .in("jogo_id", jogoIds)
+      .eq("convidado", true)
+      .eq("confirmado", false)
+    setConvidadosPendentes((data ?? []).filter(d => d.nome_convidado) as ConvidadoPendente[])
+  }
+
+  async function aprovarConvidado(id: string) {
+    await supabase.from("presencas").update({ confirmado: true }).eq("id", id)
+    if (usuario?.patota_id) await carregarConvidados(usuario.patota_id)
+  }
+
+  async function rejeitarConvidado(id: string) {
+    await supabase.from("presencas").delete().eq("id", id)
+    if (usuario?.patota_id) await carregarConvidados(usuario.patota_id)
+  }
+
+  async function gerarRecorrente() {
+    if (!recMes || !recLocal.trim() || !usuario?.patota_id) return
+    setGerandoRec(true)
+    setMsgRec(null)
+
+    const [ano, mes] = recMes.split("-").map(Number)
+    const diaSemana = parseInt(recDiaSemana)
+
+    // Encontra todas as datas do dia da semana no mês
+    const datas: string[] = []
+    const ultimoDia = new Date(ano, mes, 0).getDate()
+    for (let d = 1; d <= ultimoDia; d++) {
+      const dt = new Date(ano, mes - 1, d)
+      if (dt.getDay() === diaSemana) {
+        datas.push(`${ano}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`)
+      }
+    }
+
+    // Verifica quais já existem
+    const { data: existentes } = await supabase
+      .from("jogos")
+      .select("data")
+      .eq("patota_id", usuario.patota_id)
+      .in("data", datas)
+    const existentesSet = new Set((existentes ?? []).map(e => e.data))
+    const novas = datas.filter(d => !existentesSet.has(d))
+
+    if (novas.length === 0) {
+      setMsgRec("Todos os jogos deste período já estão cadastrados.")
+      setGerandoRec(false)
+      return
+    }
+
+    const rows = novas.map(data => ({
+      data,
+      horario: recHorario,
+      local: recLocal.trim(),
+      max_jogadores: recMaxJogadores ? parseInt(recMaxJogadores) : null,
+      status: "agendado",
+      patota_id: usuario!.patota_id,
+    }))
+
+    const { error } = await supabase.from("jogos").insert(rows)
+    if (error) {
+      setMsgRec(`Erro: ${error.message}`)
+    } else {
+      setMsgRec(`${novas.length} jogo(s) criado(s)!`)
+      await carregar(usuario.patota_id)
+    }
+    setGerandoRec(false)
   }
 
   function abrirNovo() {
@@ -137,7 +241,10 @@ export default function Jogos() {
           <h1 className={s.pageTitulo}>Jogos</h1>
           <div className={s.pageSubtitulo}>{jogos.length} no total</div>
         </div>
-        <button className={s.btnPrimary} onClick={abrirNovo}>+ Novo jogo</button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button className={s.btnSecondary} onClick={() => { setModalRec(true); setMsgRec(null) }}>⟳ Recorrente</button>
+          <button className={s.btnPrimary} onClick={abrirNovo}>+ Novo jogo</button>
+        </div>
       </div>
 
       <div className={s.card}>
@@ -194,6 +301,110 @@ export default function Jogos() {
           </table>
         )}
       </div>
+
+      {/* Convidados pendentes de aprovação */}
+      {convidadosPendentes.length > 0 && (
+        <div className={s.card} style={{ marginBottom: "1rem" }}>
+          <div className={s.cardPad} style={{ paddingBottom: "0.5rem" }}>
+            <div className={s.cardTitulo}>Convidados pendentes de aprovação</div>
+          </div>
+          <table className={s.table}>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Jogo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {convidadosPendentes.map(c => {
+                const jogo = jogos.find(j => j.id === c.jogo_id)
+                return (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: 500, color: "var(--text)" }}>{c.nome_convidado}</td>
+                    <td style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
+                      {jogo ? fmtData(jogo.data) : "—"}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                        <button
+                          className={s.btnPrimary}
+                          style={{ padding: "0.3rem 0.8rem", fontSize: "0.78rem" }}
+                          onClick={() => aprovarConvidado(c.id)}
+                        >
+                          ✓ Aprovar
+                        </button>
+                        <button
+                          className={s.btnSecondary}
+                          style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", color: "#dc2626" }}
+                          onClick={() => rejeitarConvidado(c.id)}
+                        >
+                          Rejeitar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal gerar jogos recorrentes */}
+      {modalRec && (
+        <div className={s.modalBackdrop} onClick={e => e.target === e.currentTarget && setModalRec(false)}>
+          <div className={s.modal}>
+            <div className={s.modalHeader}>
+              <span className={s.modalTitulo}>Gerar jogos recorrentes</span>
+              <button className={s.modalClose} onClick={() => setModalRec(false)}>✕</button>
+            </div>
+            <div className={s.modalBody}>
+              <div className={s.formGrid}>
+                <div className={s.formGroup}>
+                  <label className={s.formLabel}>Dia da semana</label>
+                  <select className={s.formSelect} value={recDiaSemana} onChange={e => setRecDiaSemana(e.target.value)}>
+                    <option value="0">Domingo</option>
+                    <option value="1">Segunda-feira</option>
+                    <option value="2">Terça-feira</option>
+                    <option value="3">Quarta-feira</option>
+                    <option value="4">Quinta-feira</option>
+                    <option value="5">Sexta-feira</option>
+                    <option value="6">Sábado</option>
+                  </select>
+                </div>
+                <div className={s.formGroup}>
+                  <label className={s.formLabel}>Horário</label>
+                  <input className={s.formInput} type="time" value={recHorario} onChange={e => setRecHorario(e.target.value)} />
+                </div>
+                <div className={s.formGroup}>
+                  <label className={s.formLabel}>Mês</label>
+                  <input className={s.formInput} type="month" value={recMes} onChange={e => setRecMes(e.target.value)} />
+                </div>
+                <div className={s.formGroup}>
+                  <label className={s.formLabel}>Máx. jogadores</label>
+                  <input className={s.formInput} type="number" value={recMaxJogadores} onChange={e => setRecMaxJogadores(e.target.value)} />
+                </div>
+                <div className={`${s.formGroup} ${s.full}`}>
+                  <label className={s.formLabel}>Local *</label>
+                  <input className={s.formInput} value={recLocal} onChange={e => setRecLocal(e.target.value)} placeholder="Arena Show de Bola" />
+                </div>
+              </div>
+              {msgRec && (
+                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.9rem", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 7, fontSize: "0.85rem", color: "#166534" }}>
+                  {msgRec}
+                </div>
+              )}
+            </div>
+            <div className={s.modalFooter}>
+              <button className={s.btnSecondary} onClick={() => setModalRec(false)}>Fechar</button>
+              <button className={s.btnPrimary} onClick={gerarRecorrente} disabled={gerandoRec || !recLocal.trim()}>
+                {gerandoRec ? "Gerando..." : "Gerar jogos"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div className={s.modalBackdrop} onClick={e => e.target === e.currentTarget && setModal(false)}>

@@ -15,6 +15,7 @@ type PatotaConfig = {
   local_fixo: string | null
   horario_fixo: string | null
   recado: string | null
+  logo_url: string | null
 }
 
 export default function Config() {
@@ -30,6 +31,8 @@ export default function Config() {
   const [localFixo, setLocalFixo] = useState("")
   const [horarioFixo, setHorarioFixo] = useState("")
   const [recado, setRecado] = useState("")
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   useEffect(() => { carregar() }, [])
 
@@ -37,7 +40,7 @@ export default function Config() {
     setLoading(true)
     const { data } = await supabase
       .from("patota")
-      .select("id, nome, dia_vencimento, valor_mensalidade, local_fixo, horario_fixo, recado")
+      .select("id, nome, dia_vencimento, valor_mensalidade, local_fixo, horario_fixo, recado, logo_url")
       .eq("id", usuario.patota_id)
       .maybeSingle()
     if (data) {
@@ -48,8 +51,35 @@ export default function Config() {
       setLocalFixo(data.local_fixo ?? "")
       setHorarioFixo(data.horario_fixo ?? "")
       setRecado(data.recado ?? "")
+      setLogoUrl(data.logo_url ?? null)
     }
     setLoading(false)
+  }
+
+  async function uploadLogo(file: File) {
+    if (!usuario?.patota_id) return
+    setUploadingLogo(true)
+    const ext = file.name.split(".").pop()
+    const path = `patota-${usuario.patota_id}.${ext}`
+    const { error: upErr } = await supabase.storage.from("logos").upload(path, file, { upsert: true })
+    if (upErr) {
+      setMsg({ ok: false, txt: "Erro ao fazer upload da logo." })
+      setUploadingLogo(false)
+      return
+    }
+    const { data: urlData } = supabase.storage.from("logos").getPublicUrl(path)
+    const url = urlData.publicUrl
+    await supabase.from("patota").update({ logo_url: url }).eq("id", usuario.patota_id)
+    setLogoUrl(url)
+    setMsg({ ok: true, txt: "Logo atualizada!" })
+    setUploadingLogo(false)
+  }
+
+  async function removerLogo() {
+    if (!usuario?.patota_id || !logoUrl) return
+    await supabase.from("patota").update({ logo_url: null }).eq("id", usuario.patota_id)
+    setLogoUrl(null)
+    setMsg({ ok: true, txt: "Logo removida." })
   }
 
   async function salvar(e: React.FormEvent) {
@@ -121,9 +151,43 @@ export default function Config() {
 
       <form onSubmit={salvar}>
 
-        {/* Nome */}
+        {/* Logo */}
         <div className={cs.section}>
           <div className={cs.sectionTitulo}>Identidade</div>
+          <div className={cs.card}>
+            <label className={cs.label}>Logo da patota</label>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.75rem" }}>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)" }} />
+              ) : (
+                <div style={{ width: 72, height: 72, borderRadius: 8, border: "2px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "1.5rem" }}>⚽</div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ cursor: "pointer" }}>
+                  <span className={cs.input} style={{ padding: "0.4rem 0.9rem", display: "inline-block", cursor: "pointer", fontSize: "0.85rem", width: "auto" }}>
+                    {uploadingLogo ? "Enviando..." : logoUrl ? "Trocar imagem" : "Escolher imagem"}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    disabled={uploadingLogo}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f) }}
+                  />
+                </label>
+                {logoUrl && (
+                  <button type="button" onClick={removerLogo} style={{ background: "none", border: "none", color: "#dc2626", fontSize: "0.8rem", cursor: "pointer", textAlign: "left", padding: 0 }}>
+                    Remover logo
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className={cs.hint}>PNG, JPG ou SVG. Aparece na página pública da patota.</div>
+          </div>
+        </div>
+
+        {/* Nome */}
+        <div className={cs.section}>
           <div className={cs.card}>
             <label className={cs.label}>Nome da patota</label>
             <input

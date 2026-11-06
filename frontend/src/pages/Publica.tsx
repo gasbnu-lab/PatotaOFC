@@ -11,6 +11,7 @@ type Patota = {
   local_fixo: string | null
   horario_fixo: string | null
   recado: string | null
+  logo_url: string | null
 }
 
 type Jogo = {
@@ -28,6 +29,7 @@ type Presenca = {
   jogador_id: string | null
   nome_convidado: string | null
   confirmado: boolean
+  convidado: boolean
   jogadores?: { nome: string } | null
 }
 
@@ -113,6 +115,8 @@ export default function Publica() {
   const [confirmando, setConfirmando] = useState(false)
   const [email, setEmail] = useState("")
   const [loadingConf, setLoadingConf] = useState(false)
+  const [convidadoNome, setConvidadoNome] = useState("")
+  const [adicionandoConvidado, setAdicionandoConvidado] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light")
@@ -127,8 +131,8 @@ export default function Publica() {
 
     const isNumeric = /^\d+$/.test(s)
     const patotaQuery = isNumeric
-      ? supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado").eq("id", parseInt(s)).maybeSingle()
-      : supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado").eq("slug", s).maybeSingle()
+      ? supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado, logo_url").eq("id", parseInt(s)).maybeSingle()
+      : supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado, logo_url").eq("slug", s).maybeSingle()
 
     const { data: pat } = await patotaQuery
     if (!pat) { setLoading(false); return }
@@ -181,7 +185,6 @@ export default function Publica() {
     if (!jogo) return
     setLoadingConf(true)
 
-    // Usa email da sessão se disponível, senão usa o campo digitado
     const emailBusca = jogadorLogado?.email ?? email.trim()
 
     if (!emailBusca) {
@@ -210,8 +213,20 @@ export default function Publica() {
       await supabase.from("presencas").insert({ jogo_id: jogo.id, jogador_id: jogador.id, confirmado: confirmar })
     }
 
+    // Adicionar convidado se informado — fica pendente até admin aprovar
+    if (confirmar && convidadoNome.trim()) {
+      await supabase.from("presencas").insert({
+        jogo_id: jogo.id,
+        nome_convidado: convidadoNome.trim(),
+        convidado: true,
+        confirmado: false,
+      })
+    }
+
     showToast(confirmar ? rand(FRASES_OK) : rand(FRASES_NAO))
     setEmail("")
+    setConvidadoNome("")
+    setAdicionandoConvidado(false)
     setConfirmando(false)
     if (slug) await carregar(slug)
     setLoadingConf(false)
@@ -222,8 +237,9 @@ export default function Publica() {
     setTimeout(() => setToast(""), 3500)
   }
 
+  // Convidados só aparecem depois de aprovados pelo admin (confirmado: true)
   const confirmados = presencas.filter(p => p.confirmado)
-  const ausentes = presencas.filter(p => !p.confirmado)
+  const ausentes = presencas.filter(p => !p.confirmado && !p.convidado)
   const pendentes = jogadores.filter(j => !presencas.some(p => p.jogador_id === j.id))
 
   function nomePresenca(p: Presenca) {
@@ -262,7 +278,11 @@ export default function Publica() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <Logo size={80} />
+          {patota?.logo_url ? (
+            <img src={patota.logo_url} alt={patota.nome} style={{ width: 64, height: 64, objectFit: "contain", borderRadius: 8 }} />
+          ) : (
+            <Logo size={80} />
+          )}
           <div className={styles.headerTextos}>
             <div className={styles.nomeTime}>{patota?.nome ?? ""}</div>
           </div>
@@ -350,6 +370,16 @@ export default function Publica() {
                   {jogadorLogado && !confirmando ? (
                     <div className={styles.confirmBox} style={{ gap: "0.5rem" }}>
                       <p className={styles.confirmBoxLabel}>Olá, <strong>{jogadorLogado.nome}</strong>! Vai no jogo?</p>
+                      {adicionandoConvidado && (
+                        <input
+                          className={styles.emailInput}
+                          type="text"
+                          placeholder="Nome do convidado"
+                          value={convidadoNome}
+                          onChange={e => setConvidadoNome(e.target.value)}
+                          autoFocus
+                        />
+                      )}
                       <div className={styles.confirmBtns}>
                         <button className={styles.btnVou} onClick={() => confirmarPresenca(true)} disabled={loadingConf}>
                           ✅ Vou!
@@ -358,6 +388,12 @@ export default function Publica() {
                           ❌ Não vou
                         </button>
                       </div>
+                      <button
+                        style={{ background: "none", border: "none", fontSize: "0.78rem", color: "var(--muted)", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                        onClick={() => setAdicionandoConvidado(v => !v)}
+                      >
+                        {adicionandoConvidado ? "Remover convidado" : "+ Levar convidado?"}
+                      </button>
                     </div>
                   ) : !confirmando ? (
                     <button className={styles.confirmBtn} onClick={() => setConfirmando(true)}>
@@ -380,6 +416,22 @@ export default function Publica() {
                         onKeyDown={e => e.key === "Enter" && confirmarPresenca(true)}
                         autoFocus
                       />
+                      {adicionandoConvidado && (
+                        <input
+                          className={styles.emailInput}
+                          style={{ marginTop: "0.5rem" }}
+                          type="text"
+                          placeholder="Nome do convidado"
+                          value={convidadoNome}
+                          onChange={e => setConvidadoNome(e.target.value)}
+                        />
+                      )}
+                      <button
+                        style={{ background: "none", border: "none", fontSize: "0.78rem", color: "var(--muted)", cursor: "pointer", textDecoration: "underline", padding: "0.25rem 0", alignSelf: "flex-start" }}
+                        onClick={() => setAdicionandoConvidado(v => !v)}
+                      >
+                        {adicionandoConvidado ? "Remover convidado" : "+ Levar convidado?"}
+                      </button>
                       <div className={styles.confirmBtns}>
                         <button className={styles.btnVou} onClick={() => confirmarPresenca(true)} disabled={loadingConf}>
                           ✅ Vou!
@@ -387,7 +439,7 @@ export default function Publica() {
                         <button className={styles.btnNaoVou} onClick={() => confirmarPresenca(false)} disabled={loadingConf}>
                           ❌ Não vou
                         </button>
-                        <button className={styles.btnVoltar} onClick={() => { setConfirmando(false); setEmail("") }}>
+                        <button className={styles.btnVoltar} onClick={() => { setConfirmando(false); setEmail(""); setConvidadoNome(""); setAdicionandoConvidado(false) }}>
                           ←
                         </button>
                       </div>
