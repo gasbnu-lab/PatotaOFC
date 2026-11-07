@@ -58,6 +58,21 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     )
 
+    // SEC-03: Rate limit — máximo 5 códigos por hora por e-mail
+    const umaHoraAtras = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count } = await supabase
+      .from("codigos_verificacao")
+      .select("*", { count: "exact", head: true })
+      .eq("email", email)
+      .gte("created_at", umaHoraAtras)
+
+    if ((count ?? 0) >= 5) {
+      return new Response(
+        JSON.stringify({ error: "Muitas tentativas. Aguarde alguns minutos antes de solicitar um novo código." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
+
     const codigo = Math.floor(100000 + Math.random() * 900000).toString()
     const expiraEm = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 

@@ -27,6 +27,26 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     )
 
+    // SEC-04: Buscar código ativo para verificar tentativas
+    const { data: codigosAtivos } = await supabase
+      .from("codigos_verificacao")
+      .select("id, codigo, tentativas")
+      .eq("email", email)
+      .eq("usado", false)
+      .gt("expira_em", new Date().toISOString())
+      .order("expira_em", { ascending: false })
+      .limit(1)
+
+    const codigoAtivo = codigosAtivos?.[0]
+
+    // Bloquear se atingiu limite de tentativas
+    if (codigoAtivo && codigoAtivo.tentativas >= 5) {
+      return new Response(
+        JSON.stringify({ error: "Código bloqueado por excesso de tentativas. Solicite um novo código." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
+
     const { data, error } = await supabase
       .from("codigos_verificacao")
       .select("*")
@@ -37,6 +57,18 @@ serve(async (req) => {
       .single()
 
     if (error || !data) {
+      // Incrementar tentativas no código ativo
+      if (codigoAtivo) {
+        const novasTentativas = codigoAtivo.tentativas + 1
+        await supabase
+          .from("codigos_verificacao")
+          .update({
+            tentativas: novasTentativas,
+            usado: novasTentativas >= 5,
+          })
+          .eq("id", codigoAtivo.id)
+      }
+
       return new Response(
         JSON.stringify({ error: "Código inválido ou expirado" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
