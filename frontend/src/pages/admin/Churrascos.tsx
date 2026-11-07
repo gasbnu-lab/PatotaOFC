@@ -62,6 +62,16 @@ export default function Churrascos() {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
+  // editar churrasco
+  const [editando, setEditando] = useState<Churrasco | null>(null)
+  const [eData, setEData] = useState("")
+  const [eDesc, setEDesc] = useState("")
+  const [salvandoEdit, setSalvandoEdit] = useState(false)
+
+  // excluir churrasco
+  const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
+
   // form nova despesa
   const [formDespesa, setFormDespesa] = useState(false)
   const [dDesc, setDDesc] = useState("")
@@ -246,6 +256,34 @@ export default function Churrascos() {
     await carregarDetalhe(detalhe.id)
   }
 
+  function abrirEditar(c: Churrasco, e: React.MouseEvent) {
+    e.stopPropagation()
+    setEditando(c)
+    setEData(c.data)
+    setEDesc(c.descricao ?? "")
+  }
+
+  async function salvarEdicao(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editando) return
+    setSalvandoEdit(true)
+    await supabase.from("churrascos").update({ data: eData, descricao: eDesc.trim() || null }).eq("id", editando.id)
+    setSalvandoEdit(false)
+    setEditando(null)
+    await carregarLista()
+  }
+
+  async function excluirChurrasco(id: string, e: React.MouseEvent) {
+    e.stopPropagation()
+    setExcluindo(true)
+    await supabase.from("churrasco_participantes").delete().eq("churrasco_id", id)
+    await supabase.from("churrasco_despesas").delete().eq("churrasco_id", id)
+    await supabase.from("churrascos").delete().eq("id", id)
+    setConfirmDelId(null)
+    setExcluindo(false)
+    await carregarLista()
+  }
+
   const totalDespesas = despesas.reduce((s, d) => s + d.valor, 0)
   const totalPago = participantes.filter(p => p.status === "pago").reduce((s, p) => s + p.valor_devido, 0)
 
@@ -427,13 +465,69 @@ export default function Churrascos() {
           {churrascos.map(c => (
             <div key={c.id} className={f.extratoRow} style={{ cursor: "pointer" }} onClick={() => abrirDetalhe(c)}>
               <div style={{ fontSize: "1.5rem" }}>🔥</div>
-              <div className={f.extratoInfo}>
+              <div className={f.extratoInfo} style={{ flex: 1 }}>
                 <div className={f.extratoDesc}>{c.descricao || `Churrasco`}</div>
                 <div className={f.extratoData}>{fmtData(c.data)}</div>
               </div>
-              <div style={{ color: "var(--muted)", fontSize: "0.9rem" }}>→</div>
+              <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }} onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={e => abrirEditar(c, e)}
+                  style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--text)" }}
+                >
+                  Editar
+                </button>
+                {confirmDelId === c.id ? (
+                  <>
+                    <button
+                      onClick={e => excluirChurrasco(c.id, e)}
+                      disabled={excluindo}
+                      style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}
+                    >
+                      {excluindo ? "..." : "Confirmar"}
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirmDelId(null) }}
+                      style={{ padding: "0.25rem 0.4rem", fontSize: "0.78rem", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer" }}
+                    >✕</button>
+                  </>
+                ) : (
+                  <button
+                    onClick={e => { e.stopPropagation(); setConfirmDelId(c.id) }}
+                    style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "#dc2626" }}
+                  >
+                    Excluir
+                  </button>
+                )}
+              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal editar churrasco */}
+      {editando && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
+          onClick={e => e.target === e.currentTarget && setEditando(null)}>
+          <div style={{ background: "var(--surface)", borderRadius: 12, padding: "1.5rem", width: "100%", maxWidth: 400, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <span style={{ fontWeight: 700, fontSize: "1rem" }}>Editar churrasco</span>
+              <button onClick={() => setEditando(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "var(--muted)" }}>✕</button>
+            </div>
+            <form onSubmit={salvarEdicao}>
+              <div style={{ marginBottom: "0.75rem" }}>
+                <label className={f.label}>Data</label>
+                <input className={f.input} type="date" value={eData} onChange={e => setEData(e.target.value)} required />
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label className={f.label}>Descrição (opcional)</label>
+                <input className={f.input} type="text" value={eDesc} onChange={e => setEDesc(e.target.value)} placeholder="Ex: Aniversário da Patota" maxLength={100} />
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => setEditando(null)} style={{ padding: "0.5rem 1rem", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, cursor: "pointer" }}>Cancelar</button>
+                <button type="submit" disabled={salvandoEdit} className={f.btnSalvar}>{salvandoEdit ? "Salvando..." : "Salvar"}</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
