@@ -173,8 +173,13 @@
   text-align: center;
 }
 
-.navSair {
+.navRodape {
   margin-top: auto;
+  border-top: 1px solid #222;
+  padding-top: 0.4rem;
+}
+
+.navSair {
   display: flex;
   align-items: center;
   gap: 0.65rem;

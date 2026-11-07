@@ -132,11 +132,30 @@
 
 @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
 
+/* ── Wrapper de tabela (scroll horizontal no mobile) ── */
+.tableWrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ── Tabela ── */
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.88rem;
+}
+
+@media (max-width: 768px) {
+  .table {
+    min-width: 480px;
+    font-size: 0.82rem;
+  }
+  .table th, .table td {
+    padding: 0.5rem 0.75rem;
+  }
+  .card {
+    overflow-x: auto;
+  }
 }
 
 .table th {

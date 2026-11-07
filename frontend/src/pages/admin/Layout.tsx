@@ -13,6 +13,9 @@ const NAV = [
   { path: "/admin/mensalidades", label: "Mensalidades", icon: "💰" },
   { path: "/admin/churrascos", label: "Churrascos", icon: "🥩" },
   { path: "/admin/financeiro", label: "Financeiro", icon: "📋" },
+]
+
+const NAV_BOTTOM = [
   { path: "/admin/config", label: "Config. patota", icon: "⚙️" },
   { path: "/admin/perfil", label: "Meu perfil", icon: "👤" },
 ]
@@ -91,10 +94,22 @@ export default function AdminLayout() {
             </button>
           ))}
 
-          <button className={styles.navSair} onClick={handleSair}>
-            <span className={styles.navIcon}>↩</span>
-            <span>Sair</span>
-          </button>
+          <div className={styles.navRodape}>
+            {NAV_BOTTOM.map(item => (
+              <button
+                key={item.path}
+                className={`${styles.navItem} ${isAtivo(item.path) ? styles.navAtivo : ""}`}
+                onClick={() => { navigate(item.path); setMenuAberto(false) }}
+              >
+                <span className={styles.navIcon}>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+            <button className={styles.navSair} onClick={handleSair}>
+              <span className={styles.navIcon}>↩</span>
+              <span>Sair</span>
+            </button>
+          </div>
         </nav>
 
         {menuAberto && <div className={styles.overlay} onClick={() => setMenuAberto(false)} />}
