@@ -11,6 +11,7 @@ type Jogador = {
   nota: number | null
   ativo: boolean
   isento: boolean
+  plano_mensalidade: "com_churrasco" | "sem_churrasco" | null
 }
 
 type UsuarioAcesso = {
@@ -21,14 +22,14 @@ type UsuarioAcesso = {
   status: string
 }
 
-type Form = { nome: string; email: string; posicao: string; nota: string; isento: boolean }
+type Form = { nome: string; email: string; posicao: string; nota: string; isento: boolean; plano_mensalidade: "com_churrasco" | "sem_churrasco" | "" }
 
 function iniciais(nome: string) {
   const p = nome.split(" ")
   return (p[0][0] + (p[1]?.[0] ?? "")).toUpperCase()
 }
 
-const FORM_VAZIO: Form = { nome: "", email: "", posicao: "qualquer", nota: "5", isento: false }
+const FORM_VAZIO: Form = { nome: "", email: "", posicao: "qualquer", nota: "5", isento: false, plano_mensalidade: "" }
 
 export default function Jogadores() {
   const { usuario } = useAuth()
@@ -86,7 +87,7 @@ export default function Jogadores() {
 
   function abrirEditar(j: Jogador) {
     setEditando(j)
-    setForm({ nome: j.nome, email: j.email ?? "", posicao: j.posicao ?? "qualquer", nota: String(j.nota ?? 5), isento: j.isento })
+    setForm({ nome: j.nome, email: j.email ?? "", posicao: j.posicao ?? "qualquer", nota: String(j.nota ?? 5), isento: j.isento, plano_mensalidade: j.plano_mensalidade ?? "" })
     setModal(true)
   }
 
@@ -105,6 +106,7 @@ export default function Jogadores() {
       posicao: form.posicao || "qualquer",
       nota: form.nota ? parseInt(form.nota) : 5,
       isento: form.isento,
+      plano_mensalidade: form.plano_mensalidade || null,
     }
     if (editando) {
       await supabase.from("jogadores").update(payload).eq("id", editando.id)
@@ -183,8 +185,12 @@ export default function Jogadores() {
                   <td>
                     {j.isento ? (
                       <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem", background: "#f3f4f6", color: "#6b7280", borderRadius: 5 }}>Isento</span>
+                    ) : j.plano_mensalidade === "com_churrasco" ? (
+                      <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem", background: "#fef9c3", color: "#854d0e", borderRadius: 5 }}>Com churrasco</span>
+                    ) : j.plano_mensalidade === "sem_churrasco" ? (
+                      <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem", background: "#dbeafe", color: "#1e40af", borderRadius: 5 }}>Sem churrasco</span>
                     ) : (
-                      <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Normal</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>—</span>
                     )}
                   </td>
                   <td>
@@ -322,6 +328,14 @@ export default function Jogadores() {
                   <label className={s.formLabel}>Nota (1–10)</label>
                   <select className={s.formSelect} value={form.nota} onChange={e => setForm(f => ({...f, nota: e.target.value}))}>
                     {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div className={s.formGroup}>
+                  <label className={s.formLabel}>Plano de mensalidade</label>
+                  <select className={s.formSelect} value={form.plano_mensalidade} onChange={e => setForm(f => ({...f, plano_mensalidade: e.target.value as any}))}>
+                    <option value="">Sem plano</option>
+                    <option value="com_churrasco">Com churrasco (R$60/mês)</option>
+                    <option value="sem_churrasco">Sem churrasco (R$45/mês)</option>
                   </select>
                 </div>
                 <div className={`${s.formGroup} ${s.full}`}>

@@ -12,7 +12,7 @@ type Mensalidade = {
   jogadores?: { nome: string } | null
 }
 
-type Jogador = { id: string; nome: string; isento: boolean }
+type Jogador = { id: string; nome: string; isento: boolean; plano_mensalidade: "com_churrasco" | "sem_churrasco" | null }
 
 function statusMens(mes_ref: string, pago: boolean) {
   if (pago) return "pago"
@@ -33,6 +33,8 @@ export default function Mensalidades() {
   const [mens, setMens] = useState<Mensalidade[]>([])
   const [jogadores, setJogadores] = useState<Jogador[]>([])
   const [valorPadrao, setValorPadrao] = useState<number | null>(null)
+  const [valorComChurrasco, setValorComChurrasco] = useState<number>(60)
+  const [valorSemChurrasco, setValorSemChurrasco] = useState<number>(45)
   const [loading, setLoading] = useState(true)
   const [atualizando, setAtualizando] = useState<string | null>(null)
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
@@ -76,14 +78,18 @@ export default function Mensalidades() {
   }
 
   async function carregarJogadores(patotatId: number) {
-    const { data } = await supabase.from("jogadores").select("id, nome, isento").eq("patota_id", patotatId).eq("ativo", true).order("nome")
-    setJogadores(data ?? [])
+    const { data } = await supabase.from("jogadores").select("id, nome, isento, plano_mensalidade").eq("patota_id", patotatId).eq("ativo", true).order("nome")
+    setJogadores((data ?? []) as Jogador[])
     if (data && data.length > 0) setFJogador(data[0].id)
   }
 
   async function carregarConfig(patotatId: number) {
-    const { data } = await supabase.from("patota").select("valor_mensalidade").eq("id", patotatId).maybeSingle()
-    if (data) setValorPadrao(data.valor_mensalidade)
+    const { data } = await supabase.from("patota").select("valor_mensalidade, valor_mensalidade_com_churrasco, valor_mensalidade_sem_churrasco").eq("id", patotatId).maybeSingle()
+    if (data) {
+      setValorPadrao(data.valor_mensalidade)
+      setValorComChurrasco(data.valor_mensalidade_com_churrasco ?? 60)
+      setValorSemChurrasco(data.valor_mensalidade_sem_churrasco ?? 45)
+    }
   }
 
   async function togglePago(m: Mensalidade) {
@@ -176,15 +182,14 @@ export default function Mensalidades() {
     }
 
     const patoId = usuario.patota_id
-    const mesDate = recMes + "-01"  // date column needs full date
-    const valorFinal = valorPadrao ?? 0
-    const rows = novos.map(j => ({
-      jogador_id: j.id,
-      mes_ref: mesDate,
-      pago: false,
-      valor: valorFinal,
-      patota_id: patoId,
-    }))
+    const mesDate = recMes + "-01"
+    const rows = novos.map(j => {
+      let valorFinal: number
+      if (j.plano_mensalidade === "com_churrasco") valorFinal = valorComChurrasco
+      else if (j.plano_mensalidade === "sem_churrasco") valorFinal = valorSemChurrasco
+      else valorFinal = valorPadrao ?? 0
+      return { jogador_id: j.id, mes_ref: mesDate, pago: false, valor: valorFinal, patota_id: patoId }
+    })
 
     const { error } = await supabase.from("mensalidades").insert(rows)
     if (error) {

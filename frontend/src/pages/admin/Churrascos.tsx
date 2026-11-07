@@ -7,6 +7,8 @@ import f from "./Financeiro.module.css"
 
 type Ctx = { usuario: Usuario; nomeTime: string }
 
+type JogadorPlano = { id: string; nome: string; plano_mensalidade: "com_churrasco" | "sem_churrasco" | null }
+
 type Churrasco = {
   id: string
   data: string
@@ -50,6 +52,8 @@ export default function Churrascos() {
   const [despesas, setDespesas] = useState<Despesa[]>([])
   const [participantes, setParticipantes] = useState<Participante[]>([])
   const [loadingDetalhe, setLoadingDetalhe] = useState(false)
+  const [valorAdicional, setValorAdicional] = useState(15)
+  const [jogadoresPlano, setJogadoresPlano] = useState<JogadorPlano[]>([])
 
   // form novo churrasco
   const [formNovo, setFormNovo] = useState(false)
@@ -65,12 +69,14 @@ export default function Churrascos() {
   const [salvandoDespesa, setSalvandoDespesa] = useState(false)
   const [erroDespesa, setErroDespesa] = useState<string | null>(null)
 
-  // form participante
+  // form participante: modo jogador ou avulso
   const [formPartic, setFormPartic] = useState(false)
+  const [pModo, setPModo] = useState<"jogador" | "avulso">("jogador")
+  const [pJogadorId, setPJogadorId] = useState("")
   const [pNome, setPNome] = useState("")
   const [salvandoPartic, setSalvandoPartic] = useState(false)
 
-  useEffect(() => { carregarLista() }, [])
+  useEffect(() => { carregarLista(); carregarConfig() }, [])
 
   async function carregarLista() {
     setLoading(true)
@@ -81,6 +87,23 @@ export default function Churrascos() {
       .order("data", { ascending: false })
     setChurrascos(data ?? [])
     setLoading(false)
+  }
+
+  async function carregarConfig() {
+    const { data } = await supabase
+      .from("patota")
+      .select("valor_adicional_churrasco")
+      .eq("id", usuario.patota_id)
+      .maybeSingle()
+    if (data) setValorAdicional(data.valor_adicional_churrasco ?? 15)
+    const { data: jogs } = await supabase
+      .from("jogadores")
+      .select("id, nome, plano_mensalidade")
+      .eq("patota_id", usuario.patota_id)
+      .eq("ativo", true)
+      .order("nome")
+    setJogadoresPlano((jogs ?? []) as JogadorPlano[])
+    if (jogs && jogs.length > 0) setPJogadorId(jogs[0].id)
   }
 
   async function abrirDetalhe(c: Churrasco) {
@@ -165,57 +188,56 @@ export default function Churrascos() {
     setFormDespesa(false)
     setDDesc(""); setDValor("")
     await carregarDetalhe(detalhe.id)
-    await recalcularRateio(detalhe.id)
   }
 
   async function deletarDespesa(id: string) {
     if (!detalhe) return
     await supabase.from("churrasco_despesas").delete().eq("id", id)
     await carregarDetalhe(detalhe.id)
-    await recalcularRateio(detalhe.id)
+  }
+
+  function valorParaParticipante(jogadorId: string | null): number {
+    if (!jogadorId) return valorAdicional
+    const jog = jogadoresPlano.find(j => j.id === jogadorId)
+    if (jog?.plano_mensalidade === "com_churrasco") return 0
+    return valorAdicional
   }
 
   async function adicionarParticipante(e: React.FormEvent) {
     e.preventDefault()
-    if (!detalhe || !pNome.trim()) return
+    if (!detalhe) return
     setSalvandoPartic(true)
-    const { error } = await supabase.from("churrasco_participantes").insert({
-      churrasco_id: detalhe.id,
-      nome_avulso: pNome.trim(),
-      valor_devido: 0,
-      status: "pendente",
-    })
+    if (pModo === "jogador" && pJogadorId) {
+      const jog = jogadoresPlano.find(j => j.id === pJogadorId)
+      const jaExiste = participantes.some(p => p.jogador_id === pJogadorId)
+      if (!jaExiste) {
+        await supabase.from("churrasco_participantes").insert({
+          churrasco_id: detalhe.id,
+          jogador_id: pJogadorId,
+          nome_avulso: null,
+          valor_devido: valorParaParticipante(pJogadorId),
+          status: "pendente",
+        })
+      }
+    } else if (pModo === "avulso" && pNome.trim()) {
+      await supabase.from("churrasco_participantes").insert({
+        churrasco_id: detalhe.id,
+        jogador_id: null,
+        nome_avulso: pNome.trim(),
+        valor_devido: valorAdicional,
+        status: "pendente",
+      })
+    }
     setSalvandoPartic(false)
-    if (error) return
     setFormPartic(false)
     setPNome("")
     await carregarDetalhe(detalhe.id)
-    await recalcularRateio(detalhe.id)
   }
 
   async function removerParticipante(id: string) {
     if (!detalhe) return
     await supabase.from("churrasco_participantes").delete().eq("id", id)
     await carregarDetalhe(detalhe.id)
-    await recalcularRateio(detalhe.id)
-  }
-
-  async function recalcularRateio(cid: string) {
-    const [{ data: desp }, { data: part }] = await Promise.all([
-      supabase.from("churrasco_despesas").select("valor").eq("churrasco_id", cid),
-      supabase.from("churrasco_participantes").select("id").eq("churrasco_id", cid),
-    ])
-    const total = (desp ?? []).reduce((s: number, d: any) => s + Number(d.valor), 0)
-    const n = (part ?? []).length
-    if (n === 0) return
-    const porPessoa = Math.ceil((total / n) * 100) / 100
-    for (const p of part ?? []) {
-      await supabase
-        .from("churrasco_participantes")
-        .update({ valor_devido: porPessoa })
-        .eq("id", p.id)
-    }
-    await carregarDetalhe(cid)
   }
 
   async function alterarStatus(pid: string, status: "pendente" | "pago" | "atrasado") {
@@ -304,28 +326,46 @@ export default function Churrascos() {
             {/* Participantes */}
             <div className={f.section}>
               <div className={f.sectionHeader}>
-                <div className={f.sectionTitulo} style={{ margin: 0 }}>Participantes & Rateio</div>
+                <div className={f.sectionTitulo} style={{ margin: 0 }}>Participantes</div>
                 <button className={f.btnNovo} onClick={() => setFormPartic(v => !v)}>
                   {formPartic ? "✕ Cancelar" : "+ Participante"}
                 </button>
               </div>
 
               {formPartic && (
-                <form onSubmit={adicionarParticipante} style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
-                  <input className={f.input} style={{ flex: 1 }} type="text" placeholder="Nome do participante" value={pNome} onChange={e => setPNome(e.target.value)} required maxLength={80} />
-                  <button className={f.btnSalvar} type="submit" disabled={salvandoPartic}>{salvandoPartic ? "..." : "Adicionar"}</button>
+                <form onSubmit={adicionarParticipante} style={{ marginBottom: "0.75rem" }}>
+                  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <button type="button" onClick={() => setPModo("jogador")} style={{ padding: "0.3rem 0.8rem", borderRadius: 6, border: "1px solid var(--border)", background: pModo === "jogador" ? "var(--primary)" : "var(--surface2)", color: pModo === "jogador" ? "#fff" : "var(--text)", cursor: "pointer", fontSize: "0.82rem" }}>Jogador</button>
+                    <button type="button" onClick={() => setPModo("avulso")} style={{ padding: "0.3rem 0.8rem", borderRadius: 6, border: "1px solid var(--border)", background: pModo === "avulso" ? "var(--primary)" : "var(--surface2)", color: pModo === "avulso" ? "#fff" : "var(--text)", cursor: "pointer", fontSize: "0.82rem" }}>Avulso</button>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    {pModo === "jogador" ? (
+                      <select className={f.input} style={{ flex: 1 }} value={pJogadorId} onChange={e => setPJogadorId(e.target.value)}>
+                        {jogadoresPlano.map(j => (
+                          <option key={j.id} value={j.id}>{j.nome}{j.plano_mensalidade === "com_churrasco" ? " (incluso)" : ""}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input className={f.input} style={{ flex: 1 }} type="text" placeholder="Nome do convidado" value={pNome} onChange={e => setPNome(e.target.value)} required maxLength={80} />
+                    )}
+                    <button className={f.btnSalvar} type="submit" disabled={salvandoPartic}>{salvandoPartic ? "..." : "Adicionar"}</button>
+                  </div>
                 </form>
               )}
 
               {participantes.length === 0 ? (
-                <div className={f.vazio}>Nenhum participante. Adicione para calcular o rateio.</div>
+                <div className={f.vazio}>Nenhum participante adicionado.</div>
               ) : (
                 <div className={f.extrato}>
                   {participantes.map(p => (
                     <div key={p.id} className={f.extratoRow}>
                       <div className={f.extratoInfo}>
                         <div className={f.extratoDesc}>{p.nome}</div>
-                        <div className={f.extratoData}>{fmtBRL(p.valor_devido)} por pessoa</div>
+                        <div className={f.extratoData}>
+                          {p.valor_devido === 0
+                            ? <span style={{ color: "#16a34a", fontWeight: 600 }}>Incluso na mensalidade</span>
+                            : fmtBRL(p.valor_devido)}
+                        </div>
                       </div>
                       <select
                         value={p.status}
@@ -340,16 +380,6 @@ export default function Churrascos() {
                     </div>
                   ))}
                 </div>
-              )}
-
-              {participantes.length > 0 && totalDespesas > 0 && (
-                <button
-                  className={f.btnSalvar}
-                  style={{ marginTop: "0.75rem" }}
-                  onClick={() => recalcularRateio(detalhe.id)}
-                >
-                  Recalcular rateio
-                </button>
               )}
             </div>
           </>

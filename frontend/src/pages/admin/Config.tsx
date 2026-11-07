@@ -12,6 +12,9 @@ type PatotaConfig = {
   nome: string
   dia_vencimento: number
   valor_mensalidade: number
+  valor_mensalidade_com_churrasco: number
+  valor_mensalidade_sem_churrasco: number
+  valor_adicional_churrasco: number
   local_fixo: string | null
   horario_fixo: string | null
   recado: string | null
@@ -28,6 +31,9 @@ export default function Config() {
   const [nome, setNome] = useState("")
   const [dia, setDia] = useState("")
   const [valor, setValor] = useState("")
+  const [valorComChurrasco, setValorComChurrasco] = useState("")
+  const [valorSemChurrasco, setValorSemChurrasco] = useState("")
+  const [valorAdicionalChurrasco, setValorAdicionalChurrasco] = useState("")
   const [localFixo, setLocalFixo] = useState("")
   const [horarioFixo, setHorarioFixo] = useState("")
   const [recado, setRecado] = useState("")
@@ -40,7 +46,7 @@ export default function Config() {
     setLoading(true)
     const { data } = await supabase
       .from("patota")
-      .select("id, nome, dia_vencimento, valor_mensalidade, local_fixo, horario_fixo, recado, logo_url")
+      .select("id, nome, dia_vencimento, valor_mensalidade, valor_mensalidade_com_churrasco, valor_mensalidade_sem_churrasco, valor_adicional_churrasco, local_fixo, horario_fixo, recado, logo_url")
       .eq("id", usuario.patota_id)
       .maybeSingle()
     if (data) {
@@ -48,6 +54,9 @@ export default function Config() {
       setNome(data.nome)
       setDia(String(data.dia_vencimento))
       setValor(String(data.valor_mensalidade))
+      setValorComChurrasco(String(data.valor_mensalidade_com_churrasco ?? 60))
+      setValorSemChurrasco(String(data.valor_mensalidade_sem_churrasco ?? 45))
+      setValorAdicionalChurrasco(String(data.valor_adicional_churrasco ?? 15))
       setLocalFixo(data.local_fixo ?? "")
       setHorarioFixo(data.horario_fixo ?? "")
       setRecado(data.recado ?? "")
@@ -95,6 +104,13 @@ export default function Config() {
       setMsg({ ok: false, txt: "Valor inválido." })
       return
     }
+    const valorComNum = parseFloat(valorComChurrasco.replace(",", "."))
+    const valorSemNum = parseFloat(valorSemChurrasco.replace(",", "."))
+    const valorAdicNum = parseFloat(valorAdicionalChurrasco.replace(",", "."))
+    if (isNaN(valorComNum) || isNaN(valorSemNum) || isNaN(valorAdicNum)) {
+      setMsg({ ok: false, txt: "Valores de plano inválidos." })
+      return
+    }
     setSalvando(true)
     const { error } = await supabase
       .from("patota")
@@ -102,6 +118,9 @@ export default function Config() {
         nome: nome.trim(),
         dia_vencimento: diaNum,
         valor_mensalidade: valorNum,
+        valor_mensalidade_com_churrasco: valorComNum,
+        valor_mensalidade_sem_churrasco: valorSemNum,
+        valor_adicional_churrasco: valorAdicNum,
         local_fixo: localFixo.trim() || null,
         horario_fixo: horarioFixo.trim() || null,
         recado: recado.trim() || null,
@@ -116,6 +135,9 @@ export default function Config() {
         nome: nome.trim(),
         dia_vencimento: diaNum,
         valor_mensalidade: valorNum,
+        valor_mensalidade_com_churrasco: valorComNum,
+        valor_mensalidade_sem_churrasco: valorSemNum,
+        valor_adicional_churrasco: valorAdicNum,
         local_fixo: localFixo.trim() || null,
         horario_fixo: horarioFixo.trim() || null,
         recado: recado.trim() || null,
@@ -128,6 +150,9 @@ export default function Config() {
     ? nome.trim() !== config.nome
       || dia !== String(config.dia_vencimento)
       || valor !== String(config.valor_mensalidade)
+      || valorComChurrasco !== String(config.valor_mensalidade_com_churrasco ?? 60)
+      || valorSemChurrasco !== String(config.valor_mensalidade_sem_churrasco ?? 45)
+      || valorAdicionalChurrasco !== String(config.valor_adicional_churrasco ?? 15)
       || localFixo !== (config.local_fixo ?? "")
       || horarioFixo !== (config.horario_fixo ?? "")
       || recado !== (config.recado ?? "")
@@ -260,7 +285,7 @@ export default function Config() {
                 </div>
               </div>
               <div>
-                <label className={cs.label}>Valor mensal</label>
+                <label className={cs.label}>Valor padrão (sem plano)</label>
                 <div className={cs.inputGroup}>
                   <span className={cs.inputPrefix}>R$</span>
                   <input
@@ -275,8 +300,57 @@ export default function Config() {
                 </div>
               </div>
             </div>
-            <div className={cs.hint}>
-              Usado para calcular status de mensalidades e ao gerar mensalidades recorrentes.
+            <div style={{ borderTop: "1px solid var(--border)", margin: "1rem 0" }} />
+            <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)", marginBottom: "0.75rem" }}>Planos de mensalidade</div>
+            <div className={cs.row2}>
+              <div>
+                <label className={cs.label}>Plano com churrasco</label>
+                <div className={cs.inputGroup}>
+                  <span className={cs.inputPrefix}>R$</span>
+                  <input
+                    className={cs.inputSm}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={valorComChurrasco}
+                    onChange={e => setValorComChurrasco(e.target.value)}
+                  />
+                  <span className={cs.inputSuffix}>/mês</span>
+                </div>
+              </div>
+              <div>
+                <label className={cs.label}>Plano sem churrasco</label>
+                <div className={cs.inputGroup}>
+                  <span className={cs.inputPrefix}>R$</span>
+                  <input
+                    className={cs.inputSm}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={valorSemChurrasco}
+                    onChange={e => setValorSemChurrasco(e.target.value)}
+                  />
+                  <span className={cs.inputSuffix}>/mês</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: "0.75rem" }}>
+              <label className={cs.label}>Adicional por churrasco (plano sem churrasco)</label>
+              <div className={cs.inputGroup}>
+                <span className={cs.inputPrefix}>R$</span>
+                <input
+                  className={cs.inputSm}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={valorAdicionalChurrasco}
+                  onChange={e => setValorAdicionalChurrasco(e.target.value)}
+                />
+                <span className={cs.inputSuffix}>por churrasco</span>
+              </div>
+            </div>
+            <div className={cs.hint} style={{ marginTop: "0.75rem" }}>
+              Jogadores com plano "com churrasco" não pagam adicional. Avulsos e jogadores sem plano sempre pagam o adicional.
             </div>
           </div>
         </div>
