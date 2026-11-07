@@ -330,7 +330,7 @@ export default function Jogadores() {
                     {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
-                <div className={s.formGroup}>
+                <div className={`${s.formGroup} ${s.full}`}>
                   <label className={s.formLabel}>Plano de mensalidade</label>
                   <select className={s.formSelect} value={form.plano_mensalidade} onChange={e => setForm(f => ({...f, plano_mensalidade: e.target.value as any}))}>
                     <option value="">Sem plano</option>
