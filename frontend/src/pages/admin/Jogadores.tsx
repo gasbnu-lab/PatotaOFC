@@ -70,6 +70,13 @@ export default function Jogadores() {
     setUsuarios((data ?? []) as UsuarioAcesso[])
   }
 
+  async function aprovarUsuario(u: UsuarioAcesso, novoStatus: "aprovado" | "recusado") {
+    setTogglingId(u.id)
+    await supabase.from("usuarios").update({ status: novoStatus }).eq("id", u.id)
+    setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, status: novoStatus } : x))
+    setTogglingId(null)
+  }
+
   async function toggleRole(u: UsuarioAcesso) {
     if (u.id === usuario?.id) return
     setTogglingId(u.id)
@@ -235,7 +242,14 @@ export default function Jogadores() {
         <div className={s.pageHeader} style={{ marginBottom: "0.75rem" }}>
           <div>
             <h2 className={s.pageTitulo} style={{ fontSize: "1.1rem" }}>Acesso ao sistema</h2>
-            <div className={s.pageSubtitulo}>{usuarios.length} usuário{usuarios.length !== 1 ? "s" : ""} cadastrado{usuarios.length !== 1 ? "s" : ""}</div>
+            <div className={s.pageSubtitulo}>
+              {usuarios.length} usuário{usuarios.length !== 1 ? "s" : ""} cadastrado{usuarios.length !== 1 ? "s" : ""}
+              {usuarios.filter(u => u.status === "pendente").length > 0 && (
+                <span style={{ marginLeft: "0.5rem", background: "#fef3c7", color: "#92400e", padding: "0.1rem 0.5rem", borderRadius: 999, fontSize: "0.75rem", fontWeight: 700 }}>
+                  {usuarios.filter(u => u.status === "pendente").length} pendente{usuarios.filter(u => u.status === "pendente").length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className={s.card}>
@@ -279,14 +293,38 @@ export default function Jogadores() {
                     </td>
                     <td>
                       {u.id !== usuario?.id ? (
-                        <button
-                          className={s.btnSecondary}
-                          style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }}
-                          onClick={() => toggleRole(u)}
-                          disabled={togglingId === u.id}
-                        >
-                          {togglingId === u.id ? "..." : u.role === "admin" ? "Remover admin" : "Dar admin"}
-                        </button>
+                        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          {u.status === "pendente" && (
+                            <>
+                              <button
+                                className={s.btnPrimary}
+                                style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }}
+                                onClick={() => aprovarUsuario(u, "aprovado")}
+                                disabled={togglingId === u.id}
+                              >
+                                ✓ Aprovar
+                              </button>
+                              <button
+                                className={s.btnSecondary}
+                                style={{ padding: "0.3rem 0.6rem", fontSize: "0.78rem", color: "#dc2626" }}
+                                onClick={() => aprovarUsuario(u, "recusado")}
+                                disabled={togglingId === u.id}
+                              >
+                                ✕
+                              </button>
+                            </>
+                          )}
+                          {u.status === "aprovado" && (
+                            <button
+                              className={s.btnSecondary}
+                              style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }}
+                              onClick={() => toggleRole(u)}
+                              disabled={togglingId === u.id}
+                            >
+                              {togglingId === u.id ? "..." : u.role === "admin" ? "Remover admin" : "Dar admin"}
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Você</span>
                       )}
