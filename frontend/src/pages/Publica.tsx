@@ -34,7 +34,7 @@ type Presenca = {
   jogadores?: { nome: string } | null
 }
 
-type Jogador = { id: string; nome: string; email: string | null }
+type Jogador = { id: string; nome: string; email: string | null; plano_mensalidade: "com_churrasco" | "sem_churrasco" | null }
 
 type Mensalidade = {
   id: string
@@ -49,7 +49,7 @@ type Churrasco = {
   data: string
   descricao: string | null
   churrasco_despesas: { valor: number }[]
-  churrasco_participantes: { id: string }[]
+  churrasco_participantes: { id: string; jogador_id: string | null }[]
 }
 
 const FRASES_OK = ["Bora! Tô dentro! 🔥", "Pode contar comigo, cumpade!", "Na veia! Já tô de chuteira!", "Confirmado, campeão!"]
@@ -118,6 +118,8 @@ export default function Publica() {
   const [loadingConf, setLoadingConf] = useState(false)
   const [convidadoNome, setConvidadoNome] = useState("")
   const [adicionandoConvidado, setAdicionandoConvidado] = useState(false)
+  const [loadingChurr, setLoadingChurr] = useState(false)
+  const [valorAdicional, setValorAdicional] = useState(15)
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light")
@@ -139,13 +141,15 @@ export default function Publica() {
     if (!pat) { setLoading(false); return }
     const pid = pat.id
 
-    const [{ data: jogos }, { data: jogs }] = await Promise.all([
+    const [{ data: jogos }, { data: jogs }, { data: patConfig }] = await Promise.all([
       supabase.from("jogos").select("*").eq("patota_id", pid).gte("data", hoje).in("status", ["agendado", "confirmado"]).order("data").limit(1),
-      supabase.from("jogadores").select("id, nome, email").eq("patota_id", pid).eq("ativo", true).order("nome"),
+      supabase.from("jogadores").select("id, nome, email, plano_mensalidade").eq("patota_id", pid).eq("ativo", true).order("nome"),
+      supabase.from("patota").select("valor_adicional_churrasco").eq("id", pid as number).maybeSingle(),
     ])
 
     setPatota(pat ?? null)
-    setJogadores(jogs ?? [])
+    setJogadores((jogs ?? []) as Jogador[])
+    if (patConfig?.valor_adicional_churrasco != null) setValorAdicional(patConfig.valor_adicional_churrasco)
 
     const proximoJogo = jogos?.[0] ?? null
     setJogo(proximoJogo)
@@ -165,10 +169,18 @@ export default function Publica() {
       .order("mes_ref", { ascending: false })
     setMensalidades(mens ?? [])
 
+    // Busca churrasco dentro de 7 dias antes/depois do próximo jogo (ou próximos 30 dias se sem jogo)
+    const jogoData = proximoJogo?.data ?? hoje
+    const semanaInicio = new Date(jogoData)
+    semanaInicio.setDate(semanaInicio.getDate() - 7)
+    const semanaFim = new Date(jogoData)
+    semanaFim.setDate(semanaFim.getDate() + 7)
     const { data: churr } = await supabase
       .from("churrascos")
-      .select("*, churrasco_despesas(valor), churrasco_participantes(id)")
+      .select("*, churrasco_despesas(valor), churrasco_participantes(id, jogador_id)")
       .eq("patota_id", pid as number)
+      .gte("data", semanaInicio.toISOString().split("T")[0])
+      .lte("data", semanaFim.toISOString().split("T")[0])
       .order("data", { ascending: false })
       .limit(1)
     setChrurrascos(churr ?? [])
@@ -262,6 +274,34 @@ export default function Publica() {
     setLoadingConf(false)
   }
 
+  async function confirmarChurrasco(confirmar: boolean) {
+    if (!churrascoAtual || !jogadorLogado) return
+    setLoadingChurr(true)
+
+    const exist = churrascoAtual.churrasco_participantes.find(p => p.jogador_id === jogadorLogado.id)
+
+    if (confirmar) {
+      if (!exist) {
+        const valor = jogadorLogado.plano_mensalidade === "com_churrasco" ? 0 : valorAdicional
+        await supabase.from("churrasco_participantes").insert({
+          churrasco_id: churrascoAtual.id,
+          jogador_id: jogadorLogado.id,
+          valor_devido: valor,
+          pago: false,
+        })
+      }
+      showToast("🥩 Presença no churrasco confirmada!")
+    } else {
+      if (exist) {
+        await supabase.from("churrasco_participantes").delete().eq("id", exist.id)
+      }
+      showToast("Removido do churrasco.")
+    }
+
+    if (slug) carregar(slug, true)
+    setLoadingChurr(false)
+  }
+
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(""), 3500)
@@ -288,6 +328,10 @@ export default function Publica() {
 
   const churrascoAtual = churrascos[0] ?? null
   const totalChurr = churrascoAtual?.churrasco_despesas.reduce((s, d) => s + Number(d.valor), 0) ?? 0
+  const churrascoSemana = jogo && churrascoAtual ? churrascoAtual : null
+  const estaNoChurrasco = churrascoSemana && jogadorLogado
+    ? churrascoSemana.churrasco_participantes.some(p => p.jogador_id === jogadorLogado.id)
+    : false
 
   // Deadline de confirmação
   const confirmacaoEncerrada = jogo?.confirmacao_ate
@@ -501,6 +545,48 @@ export default function Publica() {
                     </div>
                   )}
                 </>
+              )}
+
+              {/* Confirmação de churrasco da semana */}
+              {churrascoSemana && jogadorLogado && (
+                <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid var(--border)", background: "var(--accent-bg, #fff9f0)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <span style={{ fontSize: "1.1rem" }}>🥩</span>
+                    <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text)" }}>
+                      Churrasco da semana · {fmtData(churrascoSemana.data)}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "0.82rem", color: "var(--muted)", margin: "0 0 0.5rem" }}>
+                    {estaNoChurrasco
+                      ? "✅ Você confirmou presença no churrasco."
+                      : jogadorLogado.plano_mensalidade === "com_churrasco"
+                        ? "Churrasco incluso no seu plano. Vai comparecer?"
+                        : `Vai no churrasco? (R$ ${valorAdicional.toFixed(2)} adicional)`}
+                  </p>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      onClick={() => confirmarChurrasco(true)}
+                      disabled={loadingChurr}
+                      style={{
+                        padding: "0.4rem 0.9rem", fontSize: "0.82rem", borderRadius: 7, border: "none", cursor: "pointer", fontWeight: 600,
+                        background: estaNoChurrasco ? "var(--confirm, #16a34a)" : "#f97316",
+                        color: "#fff",
+                        outline: estaNoChurrasco ? "2px solid var(--confirm)" : undefined,
+                      }}
+                    >
+                      🥩 Vou!
+                    </button>
+                    {estaNoChurrasco && (
+                      <button
+                        onClick={() => confirmarChurrasco(false)}
+                        disabled={loadingChurr}
+                        style={{ padding: "0.4rem 0.9rem", fontSize: "0.82rem", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}
+                      >
+                        Não vou
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
 
               {/* Lista da semana */}
