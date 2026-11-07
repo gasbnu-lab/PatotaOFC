@@ -93,7 +93,7 @@ export default function Jogadores() {
 
   function abrirModalAdmin() {
     setEditando(null)
-    setForm({ nome: usuario?.nome ?? "", email: usuario?.email ?? "", posicao: "qualquer", nota: "5", isento: false })
+    setForm({ nome: usuario?.nome ?? "", email: usuario?.email ?? "", posicao: "qualquer", nota: "5", isento: false, plano_mensalidade: "" })
     setModal(true)
   }
 
