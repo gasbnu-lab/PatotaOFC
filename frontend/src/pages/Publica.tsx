@@ -626,15 +626,19 @@ export default function Publica() {
                     >
                       🥩 Vou!
                     </button>
-                    {estaNoChurrasco && (
-                      <button
-                        onClick={() => confirmarChurrasco(false)}
-                        disabled={loadingChurr}
-                        style={{ padding: "0.4rem 0.9rem", fontSize: "0.82rem", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}
-                      >
-                        Não vou
-                      </button>
-                    )}
+                    <button
+                      onClick={() => confirmarChurrasco(false)}
+                      disabled={loadingChurr}
+                      style={{
+                        padding: "0.4rem 0.9rem", fontSize: "0.82rem", borderRadius: 7, cursor: "pointer",
+                        border: estaNoChurrasco ? "1px solid var(--border)" : "2px solid var(--absent, #dc2626)",
+                        background: estaNoChurrasco ? "transparent" : "var(--absent-bg, #fef2f2)",
+                        color: estaNoChurrasco ? "var(--muted)" : "var(--absent, #dc2626)",
+                        fontWeight: estaNoChurrasco ? 400 : 600,
+                      }}
+                    >
+                      ❌ Não vou
+                    </button>
                   </div>
                 </div>
               )}
