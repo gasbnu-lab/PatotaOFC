@@ -16,6 +16,11 @@ function fmtData(iso: string) {
 const statusLabel: Record<string, string> = { pendente: "Pendente", pago: "Pago", atrasado: "Atrasado" }
 const statusColor: Record<string, string> = { pendente: "#d97706", pago: "#16a34a", atrasado: "#dc2626" }
 
+function labelParticipante(p: Participante) {
+  if (p.valor_devido === 0 && p.status === "pago") return { valor: "Incluso na mensalidade", badge: "Incluso", cor: "#6366f1" }
+  return { valor: fmtBRL(p.valor_devido), badge: statusLabel[p.status] ?? p.status, cor: statusColor[p.status] ?? "#888" }
+}
+
 export default function ChurrascoPublico() {
   const { slug, churrasco_id } = useParams<{ slug: string; churrasco_id: string }>()
   const navigate = useNavigate()
@@ -132,10 +137,10 @@ export default function ChurrascoPublico() {
                     <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.65rem 1rem", borderBottom: i < participantes.length - 1 ? "1px solid var(--border, #eee)" : "none" }}>
                       <div>
                         <div style={{ fontSize: "0.9rem", fontWeight: 600 }}>{p.nome}</div>
-                        <div style={{ fontSize: "0.78rem", color: "var(--muted, #888)" }}>{fmtBRL(p.valor_devido)}</div>
+                        <div style={{ fontSize: "0.78rem", color: "var(--muted, #888)" }}>{labelParticipante(p).valor}</div>
                       </div>
-                      <span style={{ fontSize: "0.78rem", fontWeight: 700, color: statusColor[p.status] ?? "#888", background: (statusColor[p.status] ?? "#888") + "18", padding: "0.2rem 0.6rem", borderRadius: 999 }}>
-                        {statusLabel[p.status] ?? p.status}
+                      <span style={{ fontSize: "0.78rem", fontWeight: 700, color: labelParticipante(p).cor, background: labelParticipante(p).cor + "18", padding: "0.2rem 0.6rem", borderRadius: 999 }}>
+                        {labelParticipante(p).badge}
                       </span>
                     </div>
                   ))}

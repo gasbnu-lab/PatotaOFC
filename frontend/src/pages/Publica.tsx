@@ -279,15 +279,20 @@ export default function Publica() {
 
     if (confirmar) {
       if (!exist) {
-        const valor = jogadorLogado.plano_mensalidade === "com_churrasco" ? 0 : valorAdicional
+        const incluso = jogadorLogado.plano_mensalidade === "com_churrasco"
+        const valor = incluso ? 0 : valorAdicional
         await supabase.from("churrasco_participantes").insert({
           churrasco_id: churrascoAtual.id,
           jogador_id: jogadorLogado.id,
           valor_devido: valor,
-          pago: false,
+          status: incluso ? "pago" : "pendente",
         })
       }
-      showToast("🥩 Presença no churrasco confirmada!")
+      showToast(
+        jogadorLogado.plano_mensalidade === "com_churrasco"
+          ? "🥩 Churrasco confirmado — incluso na mensalidade!"
+          : "🥩 Presença no churrasco confirmada!"
+      )
     } else {
       if (exist) {
         await supabase.from("churrasco_participantes").delete().eq("id", exist.id)
