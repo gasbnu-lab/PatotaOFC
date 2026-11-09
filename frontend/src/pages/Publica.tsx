@@ -169,19 +169,16 @@ export default function Publica() {
       .order("mes_ref", { ascending: false })
     setMensalidades(mens ?? [])
 
-    // Busca churrasco dentro de 7 dias antes/depois do próximo jogo (ou próximos 30 dias se sem jogo)
-    const jogoData = proximoJogo?.data ?? hoje
-    const semanaInicio = new Date(jogoData)
-    semanaInicio.setDate(semanaInicio.getDate() - 7)
-    const semanaFim = new Date(jogoData)
-    semanaFim.setDate(semanaFim.getDate() + 7)
+    // Busca churrasco nos próximos 5 dias (data >= hoje E data <= hoje + 5 dias)
+    const cincoFim = new Date(hoje)
+    cincoFim.setDate(cincoFim.getDate() + 5)
     const { data: churr } = await supabase
       .from("churrascos")
       .select("*, churrasco_despesas(valor), churrasco_participantes(id, jogador_id)")
       .eq("patota_id", pid as number)
-      .gte("data", semanaInicio.toISOString().split("T")[0])
-      .lte("data", semanaFim.toISOString().split("T")[0])
-      .order("data", { ascending: false })
+      .gte("data", hoje)
+      .lte("data", cincoFim.toISOString().split("T")[0])
+      .order("data", { ascending: true })
       .limit(1)
     setChrurrascos(churr ?? [])
 
@@ -547,48 +544,6 @@ export default function Publica() {
                 </>
               )}
 
-              {/* Confirmação de churrasco da semana */}
-              {churrascoSemana && jogadorLogado && (
-                <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid var(--border)", background: "var(--accent-bg, #fff9f0)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                    <span style={{ fontSize: "1.1rem" }}>🥩</span>
-                    <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text)" }}>
-                      Churrasco da semana · {fmtData(churrascoSemana.data)}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: "0.82rem", color: "var(--muted)", margin: "0 0 0.5rem" }}>
-                    {estaNoChurrasco
-                      ? "✅ Você confirmou presença no churrasco."
-                      : jogadorLogado.plano_mensalidade === "com_churrasco"
-                        ? "Churrasco incluso no seu plano. Vai comparecer?"
-                        : `Vai no churrasco? (R$ ${valorAdicional.toFixed(2)} adicional)`}
-                  </p>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button
-                      onClick={() => confirmarChurrasco(true)}
-                      disabled={loadingChurr}
-                      style={{
-                        padding: "0.4rem 0.9rem", fontSize: "0.82rem", borderRadius: 7, border: "none", cursor: "pointer", fontWeight: 600,
-                        background: estaNoChurrasco ? "var(--confirm, #16a34a)" : "#f97316",
-                        color: "#fff",
-                        outline: estaNoChurrasco ? "2px solid var(--confirm)" : undefined,
-                      }}
-                    >
-                      🥩 Vou!
-                    </button>
-                    {estaNoChurrasco && (
-                      <button
-                        onClick={() => confirmarChurrasco(false)}
-                        disabled={loadingChurr}
-                        style={{ padding: "0.4rem 0.9rem", fontSize: "0.82rem", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}
-                      >
-                        Não vou
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Lista da semana */}
               <div className={styles.listaSemana}>
                 <div className={styles.listaSemanaHeader}>
@@ -636,6 +591,48 @@ export default function Publica() {
                   </div>
                 </div>
               </div>
+
+              {/* Confirmação de churrasco da semana */}
+              {churrascoSemana && jogadorLogado && (
+                <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid var(--border)", background: "var(--accent-bg, #fff9f0)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <span style={{ fontSize: "1.1rem" }}>🥩</span>
+                    <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text)" }}>
+                      Churrasco da semana · {fmtData(churrascoSemana.data)}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "0.82rem", color: "var(--muted)", margin: "0 0 0.5rem" }}>
+                    {estaNoChurrasco
+                      ? "✅ Você confirmou presença no churrasco."
+                      : jogadorLogado.plano_mensalidade === "com_churrasco"
+                        ? "Churrasco incluso no seu plano. Vai comparecer?"
+                        : `Vai no churrasco? (R$ ${valorAdicional.toFixed(2)} adicional)`}
+                  </p>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      onClick={() => confirmarChurrasco(true)}
+                      disabled={loadingChurr}
+                      style={{
+                        padding: "0.4rem 0.9rem", fontSize: "0.82rem", borderRadius: 7, border: "none", cursor: "pointer", fontWeight: 600,
+                        background: estaNoChurrasco ? "var(--confirm, #16a34a)" : "#f97316",
+                        color: "#fff",
+                        outline: estaNoChurrasco ? "2px solid var(--confirm)" : undefined,
+                      }}
+                    >
+                      🥩 Vou!
+                    </button>
+                    {estaNoChurrasco && (
+                      <button
+                        onClick={() => confirmarChurrasco(false)}
+                        disabled={loadingChurr}
+                        style={{ padding: "0.4rem 0.9rem", fontSize: "0.82rem", borderRadius: 7, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}
+                      >
+                        Não vou
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className={styles.cardPad}>
@@ -645,8 +642,8 @@ export default function Publica() {
           )}
         </div>
 
-        {/* Sorteio */}
-        {jogo && (
+        {/* Sorteio — visível apenas para admin */}
+        {jogo && usuario?.role === "admin" && (
           <div className={styles.card} style={{ cursor: "pointer" }} onClick={() => navigate(`/p/${slug}/sorteio`)}>
             <div className={styles.rowLink}>
               <div className={styles.rowIconBox}>⚽</div>
