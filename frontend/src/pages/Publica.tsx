@@ -281,12 +281,17 @@ export default function Publica() {
       if (!exist) {
         const incluso = jogadorLogado.plano_mensalidade === "com_churrasco"
         const valor = incluso ? 0 : valorAdicional
-        await supabase.from("churrasco_participantes").insert({
+        const { error } = await supabase.from("churrasco_participantes").insert({
           churrasco_id: churrascoAtual.id,
           jogador_id: jogadorLogado.id,
           valor_devido: valor,
           status: incluso ? "pago" : "pendente",
         })
+        if (error) {
+          showToast(`Erro ao confirmar: ${error.message}`)
+          setLoadingChurr(false)
+          return
+        }
       }
       showToast(
         jogadorLogado.plano_mensalidade === "com_churrasco"
@@ -295,12 +300,17 @@ export default function Publica() {
       )
     } else {
       if (exist) {
-        await supabase.from("churrasco_participantes").delete().eq("id", exist.id)
+        const { error } = await supabase.from("churrasco_participantes").delete().eq("id", exist.id)
+        if (error) {
+          showToast(`Erro ao remover: ${error.message}`)
+          setLoadingChurr(false)
+          return
+        }
       }
       showToast("Removido do churrasco.")
     }
 
-    if (slug) carregar(slug, true)
+    if (slug) await carregar(slug, true)
     setLoadingChurr(false)
   }
 
