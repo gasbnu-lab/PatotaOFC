@@ -82,6 +82,7 @@ export default function Churrascos() {
 
   const [encerrando, setEncerrando] = useState(false)
   const [erroEncerrar, setErroEncerrar] = useState<string | null>(null)
+  const [alterandoStatusId, setAlterandoStatusId] = useState<string | null>(null)
 
   // form participante: modo jogador ou avulso
   const [formPartic, setFormPartic] = useState(false)
@@ -256,8 +257,10 @@ export default function Churrascos() {
 
   async function alterarStatus(pid: string, status: "pendente" | "pago" | "atrasado") {
     if (!detalhe) return
+    setAlterandoStatusId(pid)
     await supabase.from("churrasco_participantes").update({ status }).eq("id", pid)
     await carregarDetalhe(detalhe.id)
+    setAlterandoStatusId(null)
   }
 
   async function encerrarChurrasco() {
@@ -401,25 +404,6 @@ export default function Churrascos() {
               )}
             </div>
 
-            {/* Encerrar churrasco */}
-            {!detalhe.encerrado_em && (
-              <div style={{ marginBottom: "1.5rem", padding: "0.9rem 1rem", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10 }}>
-                <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#92400e", marginBottom: "0.4rem" }}>Encerrar churrasco</div>
-                <div style={{ fontSize: "0.78rem", color: "#b45309", marginBottom: "0.65rem" }}>
-                  Lança cada despesa como saída e cada pagamento confirmado como entrada no financeiro. Ação idempotente — pode ser desfeita apenas deletando os lançamentos manualmente.
-                </div>
-                {erroEncerrar && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{erroEncerrar}</div>}
-                <button
-                  onClick={encerrarChurrasco}
-                  disabled={encerrando || despesas.length === 0}
-                  style={{ padding: "0.45rem 1rem", background: encerrando || despesas.length === 0 ? "#e5e7eb" : "#f59e0b", color: encerrando || despesas.length === 0 ? "#9ca3af" : "#fff", border: "none", borderRadius: 7, cursor: despesas.length === 0 ? "not-allowed" : "pointer", fontWeight: 700, fontSize: "0.85rem" }}
-                >
-                  {encerrando ? "Lançando..." : "🔒 Encerrar e lançar no financeiro"}
-                </button>
-                {despesas.length === 0 && <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.35rem" }}>Adicione ao menos uma despesa antes de encerrar.</div>}
-              </div>
-            )}
-
             {/* Participantes */}
             <div className={f.section}>
               <div className={f.sectionHeader}>
@@ -473,8 +457,9 @@ export default function Churrascos() {
                       </div>
                       <select
                         value={p.status}
-                        onChange={e => alterarStatus(p.id, e.target.value as any)}
-                        style={{ padding: "0.25rem 0.5rem", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface2)", color: statusColor[p.status], fontWeight: 700, fontSize: "0.8rem" }}
+                        disabled={alterandoStatusId === p.id}
+                        onChange={e => alterarStatus(p.id, e.target.value as "pendente" | "pago" | "atrasado")}
+                        style={{ padding: "0.25rem 0.5rem", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface2)", color: statusColor[p.status], fontWeight: 700, fontSize: "0.8rem", opacity: alterandoStatusId === p.id ? 0.5 : 1 }}
                       >
                         {(["pendente", "pago", "atrasado"] as const).map(st => (
                           <option key={st} value={st}>{statusLabel[st]}</option>
@@ -486,6 +471,25 @@ export default function Churrascos() {
                 </div>
               )}
             </div>
+
+            {/* Encerrar churrasco — fica abaixo da lista de participantes */}
+            {!detalhe.encerrado_em && (
+              <div style={{ marginTop: "1.5rem", padding: "0.9rem 1rem", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#92400e", marginBottom: "0.4rem" }}>Encerrar churrasco</div>
+                <div style={{ fontSize: "0.78rem", color: "#b45309", marginBottom: "0.65rem" }}>
+                  Lança cada despesa como saída e cada pagamento confirmado como entrada no financeiro. Ação idempotente — pode ser desfeita apenas deletando os lançamentos manualmente.
+                </div>
+                {erroEncerrar && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{erroEncerrar}</div>}
+                <button
+                  onClick={encerrarChurrasco}
+                  disabled={encerrando || despesas.length === 0}
+                  style={{ padding: "0.45rem 1rem", background: encerrando || despesas.length === 0 ? "#e5e7eb" : "#f59e0b", color: encerrando || despesas.length === 0 ? "#9ca3af" : "#fff", border: "none", borderRadius: 7, cursor: despesas.length === 0 ? "not-allowed" : "pointer", fontWeight: 700, fontSize: "0.85rem" }}
+                >
+                  {encerrando ? "Lançando..." : "🔒 Encerrar e lançar no financeiro"}
+                </button>
+                {despesas.length === 0 && <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.35rem" }}>Adicione ao menos uma despesa antes de encerrar.</div>}
+              </div>
+            )}
           </>
         )}
       </div>

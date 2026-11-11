@@ -39,6 +39,9 @@ export default function Mensalidades() {
   const [atualizando, setAtualizando] = useState<string | null>(null)
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
   const [erroToggle, setErroToggle] = useState<string | null>(null)
+  const [paginaMens, setPaginaMens] = useState(0)
+  const [temMaisMens, setTemMaisMens] = useState(false)
+  const [carregandoMaisMens, setCarregandoMaisMens] = useState(false)
 
   // form nova mensalidade (avulsa)
   const [modal, setModal] = useState(false)
@@ -67,15 +70,36 @@ export default function Mensalidades() {
     }
   }, [usuario?.patota_id])
 
+  const PAGE_MENS = 50
+
   async function carregar(patotatId: number) {
     setLoading(true)
+    setPaginaMens(0)
     const { data } = await supabase
       .from("mensalidades")
       .select("*, jogadores(nome)")
       .eq("patota_id", patotatId)
       .order("mes_ref", { ascending: false })
+      .range(0, PAGE_MENS - 1)
     setMens(data ?? [])
+    setTemMaisMens((data?.length ?? 0) === PAGE_MENS)
     setLoading(false)
+  }
+
+  async function carregarMaisMens() {
+    if (!usuario?.patota_id) return
+    setCarregandoMaisMens(true)
+    const novaPag = paginaMens + 1
+    const { data } = await supabase
+      .from("mensalidades")
+      .select("*, jogadores(nome)")
+      .eq("patota_id", usuario.patota_id)
+      .order("mes_ref", { ascending: false })
+      .range(novaPag * PAGE_MENS, (novaPag + 1) * PAGE_MENS - 1)
+    setMens(prev => [...prev, ...(data ?? [])])
+    setPaginaMens(novaPag)
+    setTemMaisMens((data?.length ?? 0) === PAGE_MENS)
+    setCarregandoMaisMens(false)
   }
 
   async function carregarJogadores(patotatId: number) {
@@ -320,6 +344,14 @@ export default function Mensalidades() {
             </div>
           )
         })
+      )}
+
+      {temMaisMens && (
+        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+          <button className={s.btnSecondary} onClick={carregarMaisMens} disabled={carregandoMaisMens} style={{ padding: "0.4rem 1.2rem", fontSize: "0.85rem" }}>
+            {carregandoMaisMens ? "Carregando..." : "Carregar mais meses"}
+          </button>
+        </div>
       )}
 
       {/* Modal nova mensalidade avulsa */}

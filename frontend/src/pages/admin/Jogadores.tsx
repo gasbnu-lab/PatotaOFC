@@ -43,6 +43,7 @@ export default function Jogadores() {
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
   const [usuarios, setUsuarios] = useState<UsuarioAcesso[]>([])
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [acoesId, setAcoesId] = useState<string | null>(null)
   const [recusarConfirmId, setRecusarConfirmId] = useState<string | null>(null)
   const [vincularModal, setVincularModal] = useState<UsuarioAcesso | null>(null)
   const [vincularJogadorId, setVincularJogadorId] = useState<string>("")
@@ -150,14 +151,18 @@ export default function Jogadores() {
   }
 
   async function toggleAtivo(id: string, ativo: boolean) {
+    setAcoesId(id)
     await supabase.from("jogadores").update({ ativo: !ativo }).eq("id", id)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
+    setAcoesId(null)
   }
 
   async function excluir(id: string) {
+    setAcoesId(id)
     await supabase.from("jogadores").delete().eq("id", id)
     setConfirmDelId(null)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
+    setAcoesId(null)
   }
 
   // Usuários aprovados sem jogador vinculado (pelo usuario_id)
@@ -229,6 +234,7 @@ export default function Jogadores() {
                 <th>Nota</th>
                 <th>Mensalidade</th>
                 <th>Status</th>
+                <th title="Conta vinculada">🔗</th>
                 <th></th>
               </tr>
             </thead>
@@ -262,6 +268,11 @@ export default function Jogadores() {
                       {j.ativo ? "Ativo" : "Inativo"}
                     </span>
                   </td>
+                  <td style={{ textAlign: "center" }}>
+                    {j.usuario_id
+                      ? <span title="Conta vinculada" style={{ color: "#16a34a" }}>🔗</span>
+                      : <span title="Sem conta vinculada" style={{ color: "var(--muted)", fontSize: "0.75rem" }}>—</span>}
+                  </td>
                   <td>
                     <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
                       <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }} onClick={() => abrirEditar(j)}>
@@ -270,9 +281,10 @@ export default function Jogadores() {
                       <button
                         className={s.btnSecondary}
                         style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }}
+                        disabled={acoesId === j.id}
                         onClick={() => toggleAtivo(j.id, j.ativo)}
                       >
-                        {j.ativo ? "Inativar" : "Ativar"}
+                        {acoesId === j.id ? "..." : j.ativo ? "Inativar" : "Ativar"}
                       </button>
                       {confirmDelId === j.id ? (
                         <>
@@ -554,7 +566,7 @@ export default function Jogadores() {
                 </div>
                 <div className={`${s.formGroup} ${s.full}`}>
                   <label className={s.formLabel}>Plano de mensalidade</label>
-                  <select className={s.formSelect} value={form.plano_mensalidade} onChange={e => setForm(f => ({...f, plano_mensalidade: e.target.value as any}))}>
+                  <select className={s.formSelect} value={form.plano_mensalidade} onChange={e => setForm(f => ({...f, plano_mensalidade: e.target.value as "com_churrasco" | "sem_churrasco" | ""}))}>
                     <option value="">Sem plano</option>
                     <option value="com_churrasco">Com churrasco (R$60/mês)</option>
                     <option value="sem_churrasco">Sem churrasco (R$45/mês)</option>

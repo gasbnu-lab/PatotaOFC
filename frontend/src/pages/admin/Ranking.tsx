@@ -68,6 +68,7 @@ export default function Ranking() {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [sort, setSort] = useState<Sort>({ col: "gols", dir: -1 })
+  const [visivel, setVisivel] = useState(20)
 
   useEffect(() => {
     if (usuario?.patota_id) carregar(usuario.patota_id)
@@ -86,7 +87,7 @@ export default function Ranking() {
     const mapa = new Map<string, Linha>()
     for (const e of data ?? []) {
       if (!e.jogador_id) continue
-      const nome = (e.jogadores as any)?.nome ?? "?"
+      const nome = (e.jogadores as unknown as { nome: string } | null)?.nome ?? "?"
       const prev = mapa.get(e.jogador_id) ?? { jogador_id: e.jogador_id, nome, jogos: 0, gols: 0, assistencias: 0, gols_sofridos: 0, canetas: 0 }
       mapa.set(e.jogador_id, {
         ...prev,
@@ -103,6 +104,7 @@ export default function Ranking() {
 
   function toggleSort(col: keyof Linha) {
     setSort(prev => prev.col === col ? { col, dir: prev.dir === -1 ? 1 : -1 } : { col, dir: -1 })
+    setVisivel(20)
   }
 
   const sorted = [...linhas].sort((a, b) => {
@@ -126,7 +128,6 @@ export default function Ranking() {
 
   const premios = calcPremios(linhas)
 
-  if (loading) return <div className={s.page}><div className={s.empty}>Carregando...</div></div>
   if (erro) return <div className={s.page}><div style={{ color: "#dc2626", padding: "1rem" }}>{erro}</div></div>
 
   return (
@@ -134,14 +135,22 @@ export default function Ranking() {
       <div className={s.pageHeader}>
         <div>
           <h1 className={s.pageTitulo}>Ranking</h1>
-          <div className={s.pageSubtitulo}>{linhas.length} jogador{linhas.length !== 1 ? "es" : ""} com estatísticas</div>
+          <div className={s.pageSubtitulo}>{loading ? "Carregando..." : `${linhas.length} jogador${linhas.length !== 1 ? "es" : ""} com estatísticas`}</div>
         </div>
       </div>
 
-      {/* Cards de premiação */}
-      {linhas.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
-          {premios.map(p => (
+      {/* Cards de premiação — skeleton enquanto carrega */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
+        {loading ? (
+          [1, 2, 3].map(i => (
+            <div key={i} className={s.card} style={{ padding: "1rem 1.1rem", minHeight: 90, opacity: 0.5 }}>
+              <div style={{ width: 32, height: 24, background: "var(--border)", borderRadius: 4, marginBottom: "0.5rem" }} />
+              <div style={{ width: "60%", height: 12, background: "var(--border)", borderRadius: 4, marginBottom: "0.4rem" }} />
+              <div style={{ width: "80%", height: 16, background: "var(--border)", borderRadius: 4 }} />
+            </div>
+          ))
+        ) : premios.length > 0 ? (
+          premios.map(p => (
             <div key={p.titulo} className={s.card} style={{ padding: "1rem 1.1rem" }}>
               <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>{p.emoji}</div>
               <div style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: "0.4rem" }}>{p.titulo}</div>
@@ -162,13 +171,13 @@ export default function Ranking() {
                 </div>
               )}
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        ) : null}
+      </div>
 
-      {linhas.length === 0 ? (
+      {!loading && linhas.length === 0 ? (
         <div className={s.card}><div className={s.empty}>Nenhuma estatística lançada ainda. Use o botão 📊 Stats nos jogos passados.</div></div>
-      ) : (
+      ) : !loading ? (
         <div className={s.card}>
           <table className={s.table}>
             <thead>
@@ -183,7 +192,7 @@ export default function Ranking() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((l, i) => (
+              {sorted.slice(0, visivel).map((l, i) => (
                 <tr key={l.jogador_id}>
                   <td style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{i + 1}</td>
                   <td style={{ fontWeight: 600, color: "var(--text)" }}>{l.nome}</td>
@@ -196,8 +205,15 @@ export default function Ranking() {
               ))}
             </tbody>
           </table>
+          {visivel < sorted.length && (
+            <div style={{ padding: "0.75rem 1rem", textAlign: "center" }}>
+              <button onClick={() => setVisivel(v => v + 20)} style={{ padding: "0.4rem 1.2rem", fontSize: "0.85rem", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 7, cursor: "pointer" }}>
+                Carregar mais ({sorted.length - visivel} restantes)
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

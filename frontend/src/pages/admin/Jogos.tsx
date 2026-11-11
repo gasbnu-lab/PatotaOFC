@@ -71,7 +71,11 @@ export default function Jogos() {
   const [salvando, setSalvando] = useState(false)
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
   const [convidadosPendentes, setConvidadosPendentes] = useState<ConvidadoPendente[]>([])
+  const [pagina, setPagina] = useState(0)
+  const [temMais, setTemMais] = useState(false)
+  const [carregandoMais, setCarregandoMais] = useState(false)
   const [confirmRejeitarId, setConfirmRejeitarId] = useState<string | null>(null)
+  const [aprovandoId, setAprovandoId] = useState<string | null>(null)
 
   // Modal de estatísticas
   const [modalEstat, setModalEstat] = useState<Jogo | null>(null)
@@ -101,15 +105,36 @@ export default function Jogos() {
     }
   }, [usuario?.patota_id])
 
+  const PAGE_JOGOS = 20
+
   async function carregar(patotatId: number) {
     setLoading(true)
+    setPagina(0)
     const { data } = await supabase
       .from("jogos")
       .select("*")
       .eq("patota_id", patotatId)
-      .order("data", { ascending: true })
+      .order("data", { ascending: false })
+      .range(0, PAGE_JOGOS - 1)
     setJogos(data ?? [])
+    setTemMais((data?.length ?? 0) === PAGE_JOGOS)
     setLoading(false)
+  }
+
+  async function carregarMaisJogos() {
+    if (!usuario?.patota_id) return
+    setCarregandoMais(true)
+    const novaPag = pagina + 1
+    const { data } = await supabase
+      .from("jogos")
+      .select("*")
+      .eq("patota_id", usuario.patota_id)
+      .order("data", { ascending: false })
+      .range(novaPag * PAGE_JOGOS, (novaPag + 1) * PAGE_JOGOS - 1)
+    setJogos(prev => [...prev, ...(data ?? [])])
+    setPagina(novaPag)
+    setTemMais((data?.length ?? 0) === PAGE_JOGOS)
+    setCarregandoMais(false)
   }
 
   async function carregarConvidados(patotatId: number) {
@@ -132,8 +157,10 @@ export default function Jogos() {
   }
 
   async function aprovarConvidado(id: string) {
+    setAprovandoId(id)
     await supabase.from("presencas").update({ aprovado: true }).eq("id", id)
     if (usuario?.patota_id) await carregarConvidados(usuario.patota_id)
+    setAprovandoId(null)
   }
 
   async function rejeitarConvidado(id: string) {
@@ -274,7 +301,7 @@ export default function Jogos() {
         if (p.jogador_id) {
           lista.push({
             key: `j_${p.jogador_id}`,
-            nome: (p.jogadores as any)?.nome ?? "?",
+            nome: (p.jogadores as unknown as { nome: string } | null)?.nome ?? "?",
             jogador_id: p.jogador_id,
             presenca_id: null,
           })
@@ -422,6 +449,13 @@ export default function Jogos() {
             </tbody>
           </table>
         )}
+        {temMais && (
+          <div style={{ padding: "0.75rem 1rem", textAlign: "center" }}>
+            <button className={s.btnSecondary} onClick={carregarMaisJogos} disabled={carregandoMais} style={{ padding: "0.4rem 1.2rem", fontSize: "0.85rem" }}>
+              {carregandoMais ? "Carregando..." : "Carregar mais"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Convidados pendentes de aprovação */}
@@ -452,9 +486,10 @@ export default function Jogos() {
                         <button
                           className={s.btnPrimary}
                           style={{ padding: "0.3rem 0.8rem", fontSize: "0.78rem" }}
+                          disabled={aprovandoId === c.id}
                           onClick={() => aprovarConvidado(c.id)}
                         >
-                          ✓ Aprovar
+                          {aprovandoId === c.id ? "..." : "✓ Aprovar"}
                         </button>
                         {confirmRejeitarId === c.id ? (
                           <>
@@ -546,6 +581,8 @@ export default function Jogos() {
       )}
 
       {/* Modal estatísticas */}
+      {/* UX-06: modalBackdrop usa position:fixed — não funciona bem dentro de iframes.
+           O app não roda em iframe hoje; se for embutido no futuro, trocar por position:absolute relativo ao container. */}
       {modalEstat && (
         <div className={s.modalBackdrop} onClick={e => e.target === e.currentTarget && setModalEstat(null)}>
           <div className={s.modal} style={{ maxWidth: 560 }}>
