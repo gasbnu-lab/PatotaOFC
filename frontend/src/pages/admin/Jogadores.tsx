@@ -48,6 +48,7 @@ export default function Jogadores() {
   const [vincularJogadorId, setVincularJogadorId] = useState<string>("")
   const [vincularNome, setVincularNome] = useState<string>("")
   const [salvandoVinculo, setSalvandoVinculo] = useState(false)
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null)
 
   const adminEhJogador = jogadores.some(
     j => j.email && usuario?.email && j.email.toLowerCase() === usuario.email.toLowerCase()
@@ -125,6 +126,7 @@ export default function Jogadores() {
   async function salvar() {
     if (!form.nome.trim() || !usuario?.patota_id) return
     setSalvando(true)
+    setErroSalvar(null)
     const payload = {
       nome: form.nome.trim(),
       email: form.email.trim() || null,
@@ -133,15 +135,17 @@ export default function Jogadores() {
       isento: form.isento,
       plano_mensalidade: form.plano_mensalidade || null,
     }
+    let error
     if (editando) {
-      await supabase.from("jogadores").update(payload).eq("id", editando.id)
+      ({ error } = await supabase.from("jogadores").update(payload).eq("id", editando.id))
     } else {
-      await supabase.from("jogadores").insert({ ...payload, ativo: true, patota_id: usuario.patota_id })
+      ({ error } = await supabase.from("jogadores").insert({ ...payload, ativo: true, patota_id: usuario.patota_id }))
     }
+    setSalvando(false)
+    if (error) { setErroSalvar(`Erro: ${error.message}`); return }
     setModal(false)
     setEditando(null)
     setForm(FORM_VAZIO)
-    setSalvando(false)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
   }
 
@@ -572,6 +576,7 @@ export default function Jogadores() {
                 </div>
               </div>
             </div>
+            {erroSalvar && <div style={{ color: "#dc2626", fontSize: "0.82rem", padding: "0.4rem 0", marginTop: "0.25rem" }}>{erroSalvar}</div>}
             <div className={s.modalFooter}>
               <button className={s.btnSecondary} onClick={() => setModal(false)}>Cancelar</button>
               <button className={s.btnPrimary} onClick={salvar} disabled={salvando}>

@@ -38,6 +38,7 @@ export default function Mensalidades() {
   const [loading, setLoading] = useState(true)
   const [atualizando, setAtualizando] = useState<string | null>(null)
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
+  const [erroToggle, setErroToggle] = useState<string | null>(null)
 
   // form nova mensalidade (avulsa)
   const [modal, setModal] = useState(false)
@@ -94,8 +95,10 @@ export default function Mensalidades() {
 
   async function togglePago(m: Mensalidade) {
     setAtualizando(m.id)
+    setErroToggle(null)
     const novoEstado = !m.pago
-    await supabase.from("mensalidades").update({ pago: novoEstado }).eq("id", m.id)
+    const { error: errUpd } = await supabase.from("mensalidades").update({ pago: novoEstado }).eq("id", m.id)
+    if (errUpd) { setErroToggle(`Erro: ${errUpd.message}`); setAtualizando(null); return }
 
     const mesStr = mesNome(m.mes_ref)
     const nomeJog = m.jogadores?.nome ?? "Jogador"
@@ -219,6 +222,12 @@ export default function Mensalidades() {
           <button className={s.btnPrimary} onClick={() => setModal(true)}>+ Adicionar</button>
         </div>
       </div>
+
+      {erroToggle && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "0.6rem 0.9rem", marginBottom: "0.75rem", color: "#dc2626", fontSize: "0.84rem" }}>
+          {erroToggle}
+        </div>
+      )}
 
       {meses.length === 0 ? (
         <div className={s.card}><div className={s.empty}>Nenhuma mensalidade cadastrada.</div></div>

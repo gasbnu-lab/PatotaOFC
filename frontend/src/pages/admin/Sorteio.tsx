@@ -153,7 +153,14 @@ export default function Sorteio() {
     }
 
     const rpcArgs: Record<string, unknown> = { p_jogo_id: jogo.id }
-    if (numTimes && parseInt(numTimes) >= 2) rpcArgs.p_num_times = parseInt(numTimes)
+    const tam = tamTime ? parseInt(tamTime) : 0
+    const nt = numTimes ? parseInt(numTimes) : 0
+    // Deriva p_num_times a partir de tamTime se preenchido (tamTime tem prioridade sobre numTimes)
+    if (tam >= 2) {
+      rpcArgs.p_num_times = Math.max(2, Math.ceil(totalParaSortear / tam))
+    } else if (nt >= 2) {
+      rpcArgs.p_num_times = nt
+    }
 
     const { data, error } = await supabase.rpc("sortear_times", rpcArgs)
 
@@ -194,7 +201,7 @@ export default function Sorteio() {
   }
 
   const confirmados = times.flatMap(t => t.jogadores).length
-  const podeSortear = numConfirmados >= MIN_CONFIRMADOS
+  const podeSortear = totalParaSortear >= MIN_CONFIRMADOS
 
   if (loading) return (
     <div className={s.page}>
@@ -307,11 +314,20 @@ export default function Sorteio() {
                 />
               </div>
             </div>
-            {numTimes && tamTime && parseInt(numTimes) * parseInt(tamTime) > totalParaSortear + 2 && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.78rem", color: "#d97706" }}>
-                ⚠️ {numTimes} times × {tamTime} jogadores = {parseInt(numTimes) * parseInt(tamTime)} vagas, mas há apenas {totalParaSortear} confirmados.
-              </div>
-            )}
+            {(() => {
+              const tam = tamTime ? parseInt(tamTime) : 0
+              const nt = numTimes ? parseInt(numTimes) : 0
+              const timesEfetivos = tam >= 2 ? Math.max(2, Math.ceil(totalParaSortear / tam)) : nt >= 2 ? nt : 0
+              const vagasEfetivas = tam >= 2 ? timesEfetivos * tam : nt >= 2 ? nt * Math.ceil(totalParaSortear / nt) : 0
+              if (timesEfetivos > 0 && vagasEfetivas > totalParaSortear + 2) {
+                return (
+                  <div style={{ marginTop: "0.5rem", fontSize: "0.78rem", color: "#d97706" }}>
+                    ⚠️ Com {tam >= 2 ? `${tam} jogadores/time` : `${nt} times`} serão formados {timesEfetivos} times, mas há apenas {totalParaSortear} confirmados — alguns times ficam menores.
+                  </div>
+                )
+              }
+              return null
+            })()}
             {(!numTimes || !tamTime) && (
               <div style={{ marginTop: "0.4rem", fontSize: "0.75rem", color: "var(--muted)" }}>
                 Deixe em branco para usar o cálculo automático.

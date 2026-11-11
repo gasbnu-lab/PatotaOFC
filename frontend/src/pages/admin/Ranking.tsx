@@ -66,6 +66,7 @@ export default function Ranking() {
   const { usuario } = useAuth()
   const [linhas, setLinhas] = useState<Linha[]>([])
   const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
   const [sort, setSort] = useState<Sort>({ col: "gols", dir: -1 })
 
   useEffect(() => {
@@ -74,11 +75,13 @@ export default function Ranking() {
 
   async function carregar(patotatId: number) {
     setLoading(true)
-    const { data } = await supabase
+    setErro(null)
+    const { data, error } = await supabase
       .from("jogo_estatisticas")
       .select("jogador_id, gols, assistencias, gols_sofridos, canetas, jogadores(nome), jogos!inner(patota_id)")
       .eq("jogos.patota_id", patotatId)
       .not("jogador_id", "is", null)
+    if (error) { setErro(`Erro ao carregar ranking: ${error.message}`); setLoading(false); return }
 
     const mapa = new Map<string, Linha>()
     for (const e of data ?? []) {
@@ -124,6 +127,7 @@ export default function Ranking() {
   const premios = calcPremios(linhas)
 
   if (loading) return <div className={s.page}><div className={s.empty}>Carregando...</div></div>
+  if (erro) return <div className={s.page}><div style={{ color: "#dc2626", padding: "1rem" }}>{erro}</div></div>
 
   return (
     <div className={s.page}>

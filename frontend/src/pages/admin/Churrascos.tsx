@@ -265,42 +265,19 @@ export default function Churrascos() {
     setErroEncerrar(null)
     setEncerrando(true)
 
-    // Idempotência: verificar se já foi encerrado
-    const { data: churr } = await supabase.from("churrascos").select("encerrado_em").eq("id", detalhe.id).single()
-    if (churr?.encerrado_em) {
-      setErroEncerrar("Este churrasco já foi encerrado.")
+    const { data, error } = await supabase.rpc("encerrar_churrasco", { p_churrasco_id: detalhe.id })
+
+    if (error) {
+      setErroEncerrar(`Erro ao encerrar: ${error.message}`)
       setEncerrando(false)
       return
     }
 
-    // Lançar saídas para cada despesa
-    for (const d of despesas) {
-      await supabase.from("lancamentos").insert({
-        tipo: "saida",
-        valor: d.valor,
-        descricao: `Churrasco ${fmtData(detalhe.data)} — ${d.descricao}`,
-        data: detalhe.data,
-        patota_id: usuario.patota_id,
-        referencia_tipo: "churrasco_despesa",
-        referencia_id: d.id,
-      })
+    if (data?.status === "already_closed") {
+      setErroEncerrar("Este churrasco já foi encerrado.")
+      setEncerrando(false)
+      return
     }
-
-    // Lançar entradas para cada participante pago
-    for (const p of participantes.filter(p => p.status === "pago" && p.valor_devido > 0)) {
-      await supabase.from("lancamentos").insert({
-        tipo: "entrada",
-        valor: p.valor_devido,
-        descricao: `Churrasco ${fmtData(detalhe.data)} — ${p.nome}`,
-        data: detalhe.data,
-        patota_id: usuario.patota_id,
-        referencia_tipo: "churrasco_participante",
-        referencia_id: p.id,
-      })
-    }
-
-    // Marcar como encerrado
-    await supabase.from("churrascos").update({ encerrado_em: new Date().toISOString() }).eq("id", detalhe.id)
 
     setDetalhe(prev => prev ? { ...prev, encerrado_em: new Date().toISOString() } : prev)
     setEncerrando(false)
@@ -415,7 +392,9 @@ export default function Churrascos() {
                         {d.pago_por_nome && <div className={f.extratoData}>Pago por: {d.pago_por_nome}</div>}
                       </div>
                       <div className={`${f.extratoValor} ${f.vermelho}`}>{fmtBRL(d.valor)}</div>
-                      <button onClick={() => deletarDespesa(d.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: "1rem", paddingLeft: "0.5rem" }} title="Remover">×</button>
+                      {!detalhe.encerrado_em && (
+                        <button onClick={() => deletarDespesa(d.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: "1rem", paddingLeft: "0.5rem" }} title="Remover">×</button>
+                      )}
                     </div>
                   ))}
                 </div>

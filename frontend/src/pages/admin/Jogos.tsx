@@ -75,6 +75,8 @@ export default function Jogos() {
   const [participantes, setParticipantes] = useState<Participante[]>([])
   const [estats, setEstats] = useState<Record<string, Estat>>({})
   const [salvandoEstat, setSalvandoEstat] = useState(false)
+  const [erroEstat, setErroEstat] = useState<string | null>(null)
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null)
 
   // Modal recorrente
   const [modalRec, setModalRec] = useState(false)
@@ -222,6 +224,7 @@ export default function Jogos() {
   async function salvar() {
     if (!form.data || !form.local.trim() || !usuario?.patota_id) return
     setSalvando(true)
+    setErroSalvar(null)
     const payload = {
       data: form.data,
       horario: form.horario,
@@ -230,15 +233,17 @@ export default function Jogos() {
       status: form.status,
       confirmacao_ate: form.confirmacao_ate ? new Date(form.confirmacao_ate).toISOString() : null,
     }
+    let error
     if (editando) {
-      await supabase.from("jogos").update(payload).eq("id", editando.id)
+      ({ error } = await supabase.from("jogos").update(payload).eq("id", editando.id))
     } else {
-      await supabase.from("jogos").insert({ ...payload, patota_id: usuario.patota_id })
+      ({ error } = await supabase.from("jogos").insert({ ...payload, patota_id: usuario.patota_id }))
     }
+    setSalvando(false)
+    if (error) { setErroSalvar(`Erro: ${error.message}`); return }
     setModal(false)
     setEditando(null)
     setForm(FORM_VAZIO)
-    setSalvando(false)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
   }
 
@@ -305,6 +310,7 @@ export default function Jogos() {
   async function salvarEstat() {
     if (!modalEstat) return
     setSalvandoEstat(true)
+    setErroEstat(null)
     for (const p of participantes) {
       const e = estats[p.key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0, canetas: 0 }
       const payload = {
@@ -316,11 +322,10 @@ export default function Jogos() {
         gols_sofridos: e.gols_sofridos,
         canetas: e.canetas,
       }
-      if (p.jogador_id) {
-        await supabase.from("jogo_estatisticas").upsert(payload, { onConflict: "jogo_id,jogador_id" })
-      } else {
-        await supabase.from("jogo_estatisticas").upsert(payload, { onConflict: "jogo_id,presenca_id" })
-      }
+      const { error } = p.jogador_id
+        ? await supabase.from("jogo_estatisticas").upsert(payload, { onConflict: "jogo_id,jogador_id" })
+        : await supabase.from("jogo_estatisticas").upsert(payload, { onConflict: "jogo_id,presenca_id" })
+      if (error) { setErroEstat(`Erro ao salvar: ${error.message}`); setSalvandoEstat(false); return }
     }
     setSalvandoEstat(false)
     setModalEstat(null)
@@ -569,6 +574,7 @@ export default function Jogos() {
                 </table>
               )}
             </div>
+            {erroEstat && <div style={{ color: "#dc2626", fontSize: "0.82rem", padding: "0.4rem 0.75rem" }}>{erroEstat}</div>}
             <div className={s.modalFooter}>
               <button className={s.btnSecondary} onClick={() => setModalEstat(null)}>Fechar</button>
               <button className={s.btnPrimary} onClick={salvarEstat} disabled={salvandoEstat || participantes.length === 0}>
@@ -627,6 +633,7 @@ export default function Jogos() {
                 </div>
               </div>
             </div>
+            {erroSalvar && <div style={{ color: "#dc2626", fontSize: "0.82rem", padding: "0.4rem 0", marginTop: "0.25rem" }}>{erroSalvar}</div>}
             <div className={s.modalFooter}>
               <button className={s.btnSecondary} onClick={() => setModal(false)}>Cancelar</button>
               <button className={s.btnPrimary} onClick={salvar} disabled={salvando}>
