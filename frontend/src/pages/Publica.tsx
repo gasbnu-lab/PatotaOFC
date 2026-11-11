@@ -12,6 +12,7 @@ type Patota = {
   horario_fixo: string | null
   recado: string | null
   logo_url: string | null
+  ranking_publico: boolean
 }
 
 type Jogo = {
@@ -34,7 +35,12 @@ type Presenca = {
   jogadores?: { nome: string } | null
 }
 
-type Jogador = { id: string; nome: string; email: string | null; plano_mensalidade: "com_churrasco" | "sem_churrasco" | null }
+type Jogador = { id: string; nome: string; email: string | null; plano_mensalidade: "com_churrasco" | "sem_churrasco" | null; usuario_id: string | null }
+
+type MinhaMensalidade = { id: string; mes_ref: string; pago: boolean; valor: number }
+type MinhaPresenca = { jogo_data: string; confirmado: boolean }
+type MinhaEstat = { jogos: number; gols: number; assistencias: number; gols_sofridos: number; canetas: number }
+type PremioPublico = { categoria: string; nome: string; total: number; jogos: number; media: number }
 
 type Mensalidade = {
   id: string
@@ -123,6 +129,11 @@ export default function Publica() {
   const [loadingChurr, setLoadingChurr] = useState(false)
   const [valorAdicional, setValorAdicional] = useState(15)
   const [mensAbertas, setMensAbertas] = useState<Record<string, boolean>>({ pago: false, pendente: true, atrasado: true })
+  const [minhasMens, setMinhasMens] = useState<MinhaMensalidade[]>([])
+  const [minhasPresencas, setMinhasPresencas] = useState<MinhaPresenca[]>([])
+  const [minhaEstat, setMinhaEstat] = useState<MinhaEstat | null>(null)
+  const [loadingArea, setLoadingArea] = useState(false)
+  const [premiosPublicos, setPremiosPublicos] = useState<PremioPublico[]>([])
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light")
@@ -131,14 +142,66 @@ export default function Publica() {
 
   useEffect(() => { if (slug) carregar(slug) }, [slug])
 
+  // EV-01: dados pessoais do jogador vinculado (usuario_id)
+  useEffect(() => {
+    if (!session?.user?.id || !patota?.id || jogadores.length === 0) return
+    const uid = session.user.id
+    const jl = jogadores.find(j => j.usuario_id === uid)
+      ?? (session.user.email ? jogadores.find(j => j.email?.toLowerCase() === session.user.email!.toLowerCase()) : null)
+      ?? null
+    if (!jl?.usuario_id) return
+    carregarAreaPessoal(jl.id, patota.id as unknown as number)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, jogadores.length, patota?.id])
+
+  // EV-03: premiações públicas
+  useEffect(() => {
+    if (!patota?.ranking_publico || !patota?.id) { setPremiosPublicos([]); return }
+    const pid = patota.id as unknown as number
+    supabase.rpc("lideranca_publica", { p_patota_id: pid }).then(({ data }) => {
+      setPremiosPublicos((data as PremioPublico[]) ?? [])
+    })
+  }, [patota?.id, patota?.ranking_publico])
+
+  async function carregarAreaPessoal(jogadorId: string, pid: number) {
+    setLoadingArea(true)
+    const tres = new Date()
+    tres.setMonth(tres.getMonth() - 2)
+    const [{ data: mens }, { data: pres }, { data: estat }] = await Promise.all([
+      supabase.from("mensalidades").select("id, mes_ref, pago, valor").eq("jogador_id", jogadorId).gte("mes_ref", tres.toISOString().slice(0, 7) + "-01").order("mes_ref", { ascending: false }),
+      supabase.from("presencas").select("confirmado, jogos!inner(data, patota_id)").eq("jogador_id", jogadorId).eq("jogos.patota_id", pid).order("jogos(data)", { ascending: false }).limit(8),
+      supabase.from("jogo_estatisticas").select("gols, assistencias, gols_sofridos, canetas, jogos!inner(patota_id)").eq("jogador_id", jogadorId).eq("jogos.patota_id", pid),
+    ])
+    setMinhasMens((mens ?? []) as MinhaMensalidade[])
+    const presRows = (pres ?? []) as unknown as { confirmado: boolean; jogos: { data: string }[] }[]
+    setMinhasPresencas(presRows.map(p => ({ jogo_data: p.jogos?.[0]?.data ?? "", confirmado: p.confirmado })))
+    if (estat && estat.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const agg = (estat as any[]).reduce<MinhaEstat>(
+        (acc, e) => ({
+          jogos: acc.jogos + 1,
+          gols: acc.gols + (e.gols ?? 0),
+          assistencias: acc.assistencias + (e.assistencias ?? 0),
+          gols_sofridos: acc.gols_sofridos + (e.gols_sofridos ?? 0),
+          canetas: acc.canetas + (e.canetas ?? 0),
+        }),
+        { jogos: 0, gols: 0, assistencias: 0, gols_sofridos: 0, canetas: 0 }
+      )
+      setMinhaEstat(agg)
+    } else {
+      setMinhaEstat(null)
+    }
+    setLoadingArea(false)
+  }
+
   async function carregar(s: string, silent = false) {
     if (!silent) setLoading(true)
     const hoje = new Date().toISOString().split("T")[0]
 
     const isNumeric = /^\d+$/.test(s)
     const patotaQuery = isNumeric
-      ? supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado, logo_url").eq("id", parseInt(s)).maybeSingle()
-      : supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado, logo_url").eq("slug", s).maybeSingle()
+      ? supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado, logo_url, ranking_publico").eq("id", parseInt(s)).maybeSingle()
+      : supabase.from("patota").select("id, nome, local_fixo, horario_fixo, recado, logo_url, ranking_publico").eq("slug", s).maybeSingle()
 
     const { data: pat } = await patotaQuery
     if (!pat) { setLoading(false); return }
@@ -146,7 +209,7 @@ export default function Publica() {
 
     const [{ data: jogos }, { data: jogs }, { data: patConfig }] = await Promise.all([
       supabase.from("jogos").select("*").eq("patota_id", pid).gte("data", hoje).in("status", ["agendado", "confirmado"]).order("data").limit(1),
-      supabase.from("jogadores").select("id, nome, email, plano_mensalidade").eq("patota_id", pid).eq("ativo", true).order("nome"),
+      supabase.from("jogadores").select("id, nome, email, plano_mensalidade, usuario_id").eq("patota_id", pid).eq("ativo", true).order("nome"),
       supabase.from("patota").select("valor_adicional_churrasco").eq("id", pid as number).maybeSingle(),
     ])
 
@@ -188,10 +251,13 @@ export default function Publica() {
     setLoading(false)
   }
 
-  // Jogador logado (sessão ativa na patota)
+  // Jogador logado (sessão ativa na patota) — prioriza vínculo explícito via usuario_id
+  const sessionUserId = session?.user?.id ?? null
   const sessionEmail = session?.user?.email ?? null
-  const jogadorLogado = sessionEmail
-    ? jogadores.find(j => j.email?.toLowerCase() === sessionEmail.toLowerCase()) ?? null
+  const jogadorLogado = sessionUserId
+    ? (jogadores.find(j => j.usuario_id === sessionUserId)
+        ?? (sessionEmail ? jogadores.find(j => j.email?.toLowerCase() === sessionEmail.toLowerCase()) : null)
+        ?? null)
     : null
 
   async function confirmarPresenca(confirmar: boolean) {
@@ -781,6 +847,122 @@ export default function Publica() {
               </span>
             </div>
             <span style={{ marginLeft: "auto", color: "rgba(0,0,0,0.5)", fontSize: "0.85rem" }}>›</span>
+          </div>
+        )}
+
+        {/* EV-03: Cards de premiação públicos */}
+        {premiosPublicos.length > 0 && (() => {
+          const infoCard: Record<string, { emoji: string; titulo: string; unidade: string }> = {
+            artilheiro: { emoji: "🥇", titulo: "Artilheiro", unidade: "gols/jogo" },
+            menos_vazado: { emoji: "🧤", titulo: "Menos vazado", unidade: "sofridos/jogo" },
+            mais_coca: { emoji: "🥤", titulo: "Quem paga mais Coca", unidade: "canetas/jogo" },
+          }
+          return (
+            <div>
+              <div style={{ padding: "0.5rem 0 0.4rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)" }}>
+                Premiação da patota
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.75rem" }}>
+                {premiosPublicos.map(p => {
+                  const info = infoCard[p.categoria] ?? { emoji: "🏅", titulo: p.categoria, unidade: "" }
+                  return (
+                    <div key={p.categoria} className={styles.card} style={{ padding: "1rem 1.1rem" }}>
+                      <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>{info.emoji}</div>
+                      <div style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: "0.4rem" }}>{info.titulo}</div>
+                      <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text)" }}>{p.nome}</div>
+                      <div style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
+                        {Number(p.media).toFixed(2)} {info.unidade}
+                        <span style={{ marginLeft: "0.4rem", fontSize: "0.75rem" }}>({p.total} em {p.jogos} jogo{p.jogos !== 1 ? "s" : ""})</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* EV-01: Área pessoal do jogador vinculado */}
+        {jogadorLogado?.usuario_id && (
+          <div className={styles.card}>
+            <div className={styles.cardPad} style={{ paddingBottom: "0.5rem" }}>
+              <div className={styles.secLabel}>Minha área · {jogadorLogado.nome}</div>
+            </div>
+
+            {loadingArea ? (
+              <div style={{ padding: "1rem", color: "var(--muted)", fontSize: "0.85rem" }}>Carregando...</div>
+            ) : (
+              <>
+                {/* Mensalidades pessoais */}
+                {minhasMens.length > 0 && (
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "0.75rem 1rem" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: "0.5rem" }}>Mensalidades</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                      {minhasMens.map(m => {
+                        const st = statusMens(m.mes_ref, m.pago)
+                        const cor = st === "pago" ? "#16a34a" : st === "atrasado" ? "#dc2626" : "#d97706"
+                        const label = st === "pago" ? "✅ Pago" : st === "atrasado" ? "⚠️ Atrasado" : "⏳ Pendente"
+                        return (
+                          <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem" }}>
+                            <span style={{ color: "var(--text)" }}>{mesNome(m.mes_ref)}/{m.mes_ref.split("-")[0]}</span>
+                            <span style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                              <span style={{ color: "var(--muted)", fontSize: "0.78rem" }}>R$ {Number(m.valor).toFixed(2)}</span>
+                              <span style={{ fontWeight: 600, fontSize: "0.78rem", color: cor }}>{label}</span>
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Histórico de presenças */}
+                {minhasPresencas.length > 0 && (
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "0.75rem 1rem" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: "0.5rem" }}>Últimos jogos</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                      {minhasPresencas.map((p, i) => (
+                        <span key={i} style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.25rem",
+                          padding: "0.2rem 0.6rem", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600,
+                          background: p.confirmado ? "#dcfce7" : "#fee2e2",
+                          color: p.confirmado ? "#15803d" : "#dc2626",
+                        }}>
+                          {p.confirmado ? "✅" : "❌"} {fmtData(p.jogo_data)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Estatísticas pessoais */}
+                {minhaEstat && minhaEstat.jogos > 0 && (
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "0.75rem 1rem" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", marginBottom: "0.5rem" }}>
+                      Estatísticas · {minhaEstat.jogos} jogo{minhaEstat.jogos !== 1 ? "s" : ""}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem", textAlign: "center" }}>
+                      {([
+                        { label: "⚽ Gols", total: minhaEstat.gols },
+                        { label: "🅰️ Assist.", total: minhaEstat.assistencias },
+                        { label: "🛡️ Sofridos", total: minhaEstat.gols_sofridos },
+                        { label: "🥤 Canetas", total: minhaEstat.canetas },
+                      ] as const).map(item => (
+                        <div key={item.label} style={{ background: "var(--surface2)", borderRadius: 8, padding: "0.4rem 0.2rem" }}>
+                          <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text)" }}>{item.total}</div>
+                          <div style={{ fontSize: "0.68rem", color: "var(--muted)" }}>{item.label}</div>
+                          <div style={{ fontSize: "0.65rem", color: "var(--muted)" }}>({(item.total / minhaEstat!.jogos).toFixed(2)}/jogo)</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {minhasMens.length === 0 && minhasPresencas.length === 0 && !minhaEstat && (
+                  <div style={{ padding: "1rem", color: "var(--muted)", fontSize: "0.85rem" }}>Nenhum dado encontrado ainda.</div>
+                )}
+              </>
+            )}
           </div>
         )}
 

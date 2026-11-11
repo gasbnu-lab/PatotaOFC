@@ -19,6 +19,7 @@ type PatotaConfig = {
   horario_fixo: string | null
   recado: string | null
   logo_url: string | null
+  ranking_publico: boolean
 }
 
 export default function Config() {
@@ -39,6 +40,7 @@ export default function Config() {
   const [recado, setRecado] = useState("")
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [rankingPublico, setRankingPublico] = useState(false)
 
   useEffect(() => { carregar() }, [])
 
@@ -46,7 +48,7 @@ export default function Config() {
     setLoading(true)
     const { data } = await supabase
       .from("patota")
-      .select("id, nome, dia_vencimento, valor_mensalidade, valor_mensalidade_com_churrasco, valor_mensalidade_sem_churrasco, valor_adicional_churrasco, local_fixo, horario_fixo, recado, logo_url")
+      .select("id, nome, dia_vencimento, valor_mensalidade, valor_mensalidade_com_churrasco, valor_mensalidade_sem_churrasco, valor_adicional_churrasco, local_fixo, horario_fixo, recado, logo_url, ranking_publico")
       .eq("id", usuario.patota_id)
       .maybeSingle()
     if (data) {
@@ -61,6 +63,7 @@ export default function Config() {
       setHorarioFixo(data.horario_fixo ?? "")
       setRecado(data.recado ?? "")
       setLogoUrl(data.logo_url ?? null)
+      setRankingPublico(data.ranking_publico ?? false)
     }
     setLoading(false)
   }
@@ -124,6 +127,7 @@ export default function Config() {
         local_fixo: localFixo.trim() || null,
         horario_fixo: horarioFixo.trim() || null,
         recado: recado.trim() || null,
+        ranking_publico: rankingPublico,
       })
       .eq("id", usuario.patota_id)
     setSalvando(false)
@@ -141,6 +145,7 @@ export default function Config() {
         local_fixo: localFixo.trim() || null,
         horario_fixo: horarioFixo.trim() || null,
         recado: recado.trim() || null,
+        ranking_publico: rankingPublico,
       } : c)
       setMsg({ ok: true, txt: "Configurações salvas!" })
     }
@@ -156,6 +161,7 @@ export default function Config() {
       || localFixo !== (config.local_fixo ?? "")
       || horarioFixo !== (config.horario_fixo ?? "")
       || recado !== (config.recado ?? "")
+      || rankingPublico !== (config.ranking_publico ?? false)
     : false
 
   if (loading) return (
@@ -352,6 +358,25 @@ export default function Config() {
             <div className={cs.hint} style={{ marginTop: "0.75rem" }}>
               Jogadores com plano "com churrasco" não pagam adicional. Avulsos e jogadores sem plano sempre pagam o adicional.
             </div>
+          </div>
+        </div>
+
+        {/* Ranking público */}
+        <div className={s.card} style={{ marginTop: "1rem", padding: "1rem 1.1rem" }}>
+          <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)", marginBottom: "0.5rem" }}>Visibilidade</div>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={rankingPublico}
+              onChange={e => setRankingPublico(e.target.checked)}
+              style={{ width: 18, height: 18, cursor: "pointer" }}
+            />
+            <span style={{ fontSize: "0.88rem", color: "var(--text)" }}>
+              Mostrar ranking público (artilheiro, menos vazado, mais Coca) para os membros
+            </span>
+          </label>
+          <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.4rem", paddingLeft: "1.6rem" }}>
+            Exibe apenas os 3 cards de premiação na página pública. Não expõe estatísticas individuais.
           </div>
         </div>
 
