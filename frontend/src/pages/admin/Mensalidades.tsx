@@ -225,6 +225,53 @@ export default function Mensalidades() {
       ) : (
         meses.map(mes => {
           const doMes = mens.filter(m => m.mes_ref === mes)
+          const pendentes = doMes
+            .filter(m => !m.pago)
+            .sort((a, b) => (a.jogadores?.nome ?? "").localeCompare(b.jogadores?.nome ?? "", "pt-BR"))
+          const pagos = doMes
+            .filter(m => m.pago)
+            .sort((a, b) => (a.jogadores?.nome ?? "").localeCompare(b.jogadores?.nome ?? "", "pt-BR"))
+
+          const renderLinha = (m: Mensalidade) => {
+            const st = statusMens(m.mes_ref, m.pago)
+            return (
+              <tr key={m.id}>
+                <td style={{ fontWeight: 500, color: "var(--text)" }}>
+                  {m.jogadores?.nome ?? "—"}
+                </td>
+                <td>
+                  <span className={s[`badge${st.charAt(0).toUpperCase() + st.slice(1)}`]}>
+                    {st === "pago" ? "PAGO" : st === "atrasado" ? "ATRASADO" : "PENDENTE"}
+                  </span>
+                </td>
+                <td>
+                  <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                    <button
+                      className={s.btnSecondary}
+                      style={{ padding: "0.3rem 0.8rem", fontSize: "0.78rem" }}
+                      disabled={atualizando === m.id}
+                      onClick={() => togglePago(m)}
+                    >
+                      {m.pago ? "Desmarcar" : "Marcar pago"}
+                    </button>
+                    {confirmDelId === m.id ? (
+                      <>
+                        <button onClick={() => excluir(m)} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
+                          Confirmar
+                        </button>
+                        <button className={s.btnSecondary} style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }} onClick={() => setConfirmDelId(null)}>✕</button>
+                      </>
+                    ) : (
+                      <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", color: "#dc2626" }} onClick={() => setConfirmDelId(m.id)}>
+                        Excluir
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )
+          }
+
           return (
             <div key={mes} className={s.card} style={{ marginBottom: "1rem" }}>
               <div className={s.cardPad} style={{ paddingBottom: "0.5rem" }}>
@@ -232,56 +279,34 @@ export default function Mensalidades() {
                   {mesNome(mes)}
                 </div>
               </div>
-              <table className={s.table}>
-                <thead>
-                  <tr>
-                    <th>Jogador</th>
-                    <th>Status</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {doMes.map(m => {
-                    const st = statusMens(m.mes_ref, m.pago)
-                    return (
-                      <tr key={m.id}>
-                        <td style={{ fontWeight: 500, color: "var(--text)" }}>
-                          {m.jogadores?.nome ?? "—"}
-                        </td>
-                        <td>
-                          <span className={s[`badge${st.charAt(0).toUpperCase() + st.slice(1)}`]}>
-                            {st === "pago" ? "PAGO" : st === "atrasado" ? "ATRASADO" : "PENDENTE"}
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
-                            <button
-                              className={s.btnSecondary}
-                              style={{ padding: "0.3rem 0.8rem", fontSize: "0.78rem" }}
-                              disabled={atualizando === m.id}
-                              onClick={() => togglePago(m)}
-                            >
-                              {m.pago ? "Desmarcar" : "Marcar pago"}
-                            </button>
-                            {confirmDelId === m.id ? (
-                              <>
-                                <button onClick={() => excluir(m)} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
-                                  Confirmar
-                                </button>
-                                <button className={s.btnSecondary} style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }} onClick={() => setConfirmDelId(null)}>✕</button>
-                              </>
-                            ) : (
-                              <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", color: "#dc2626" }} onClick={() => setConfirmDelId(m.id)}>
-                                Excluir
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0", borderTop: "1px solid var(--border)" }}>
+                {/* Coluna esquerda: pendentes + atrasados */}
+                <div style={{ borderRight: "1px solid var(--border)" }}>
+                  <div style={{ padding: "0.4rem 1rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", background: "var(--surface2, #f9fafb)" }}>
+                    Pendentes / Atrasados ({pendentes.length})
+                  </div>
+                  {pendentes.length === 0 ? (
+                    <div style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "var(--muted)" }}>Nenhum</div>
+                  ) : (
+                    <table className={s.table} style={{ borderTop: "1px solid var(--border)" }}>
+                      <tbody>{pendentes.map(renderLinha)}</tbody>
+                    </table>
+                  )}
+                </div>
+                {/* Coluna direita: pagos */}
+                <div>
+                  <div style={{ padding: "0.4rem 1rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", background: "var(--surface2, #f9fafb)" }}>
+                    Pagos ({pagos.length})
+                  </div>
+                  {pagos.length === 0 ? (
+                    <div style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "var(--muted)" }}>Nenhum</div>
+                  ) : (
+                    <table className={s.table} style={{ borderTop: "1px solid var(--border)" }}>
+                      <tbody>{pagos.map(renderLinha)}</tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
             </div>
           )
         })

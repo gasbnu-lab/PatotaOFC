@@ -228,29 +228,47 @@ export default function Sorteio() {
       {jogo && (
         <>
           {/* Jogadores não confirmados que admin pode incluir manualmente */}
-          {todosJogadores.filter(j => !confirmadosIds.has(j.id)).length > 0 && (
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.9rem 1rem", marginBottom: "1rem" }}>
-              <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)", marginBottom: "0.5rem" }}>
-                Incluir manualmente no sorteio
-              </div>
-              <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginBottom: "0.6rem" }}>
-                Marque jogadores que vão aparecer mas ainda não confirmaram no app. A presença deles será registrada como confirmada.
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                {todosJogadores.filter(j => !confirmadosIds.has(j.id)).map(j => (
-                  <label key={j.id} style={{ display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer", padding: "0.3rem 0.6rem", borderRadius: 6, border: `1px solid ${extrasIds.has(j.id) ? "var(--primary, #6366f1)" : "var(--border)"}`, background: extrasIds.has(j.id) ? "var(--accent-bg, #eef2ff)" : "var(--surface2)", fontSize: "0.82rem", fontWeight: extrasIds.has(j.id) ? 600 : 400, color: "var(--text)" }}>
-                    <input type="checkbox" checked={extrasIds.has(j.id)} onChange={() => toggleExtra(j.id)} style={{ width: 14, height: 14, cursor: "pointer" }} />
-                    {j.nome}
-                  </label>
-                ))}
-              </div>
-              {extrasIds.size > 0 && (
-                <div style={{ marginTop: "0.5rem", fontSize: "0.78rem", color: "var(--muted)" }}>
-                  {extrasIds.size} extra{extrasIds.size !== 1 ? "s" : ""} selecionado{extrasIds.size !== 1 ? "s" : ""} · total para sorteio: {totalParaSortear}
+          {todosJogadores.filter(j => !confirmadosIds.has(j.id)).length > 0 && (() => {
+            const naoConfirmados = todosJogadores.filter(j => !confirmadosIds.has(j.id))
+            const todosMarcados = naoConfirmados.every(j => extrasIds.has(j.id))
+            return (
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)" }}>
+                    Incluir manualmente no sorteio
+                  </div>
+                  <button
+                    style={{ fontSize: "0.78rem", color: "var(--primary, #6366f1)", background: "none", border: "none", cursor: "pointer", padding: "0.1rem 0.3rem", fontWeight: 600 }}
+                    onClick={() => {
+                      if (todosMarcados) {
+                        setExtrasIds(new Set())
+                      } else {
+                        setExtrasIds(new Set(naoConfirmados.map(j => j.id)))
+                      }
+                    }}
+                  >
+                    {todosMarcados ? "Desmarcar todos" : "Marcar todos"}
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
+                <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginBottom: "0.6rem" }}>
+                  Marque jogadores que vão aparecer mas ainda não confirmaram no app. A presença deles será registrada como confirmada.
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                  {naoConfirmados.map(j => (
+                    <label key={j.id} style={{ display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer", padding: "0.3rem 0.6rem", borderRadius: 6, border: `1px solid ${extrasIds.has(j.id) ? "var(--primary, #6366f1)" : "var(--border)"}`, background: extrasIds.has(j.id) ? "var(--accent-bg, #eef2ff)" : "var(--surface2)", fontSize: "0.82rem", fontWeight: extrasIds.has(j.id) ? 600 : 400, color: "var(--text)" }}>
+                      <input type="checkbox" checked={extrasIds.has(j.id)} onChange={() => toggleExtra(j.id)} style={{ width: 14, height: 14, cursor: "pointer" }} />
+                      {j.nome}
+                    </label>
+                  ))}
+                </div>
+                {extrasIds.size > 0 && (
+                  <div style={{ marginTop: "0.5rem", fontSize: "0.78rem", color: "var(--muted)" }}>
+                    {extrasIds.size} extra{extrasIds.size !== 1 ? "s" : ""} selecionado{extrasIds.size !== 1 ? "s" : ""} · total para sorteio: {totalParaSortear}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {!podeSortear && totalParaSortear < MIN_CONFIRMADOS && (
             <div className={ss.erro} style={{ background: "#fef9c3", borderColor: "#f59e0b", color: "#92400e" }}>
