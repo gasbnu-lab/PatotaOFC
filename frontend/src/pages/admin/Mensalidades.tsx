@@ -288,9 +288,10 @@ export default function Mensalidades() {
                   {mesNome(mes)}
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0", borderTop: "1px solid var(--border)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "var(--mens-cols, 1fr 1fr)", gap: "0", borderTop: "1px solid var(--border)" }}
+                className="mensGrid">
                 {/* Coluna esquerda: pendentes + atrasados */}
-                <div style={{ borderRight: "1px solid var(--border)" }}>
+                <div style={{ borderRight: "1px solid var(--border)", overflowX: "auto" }}>
                   <div style={{ padding: "0.4rem 1rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", background: "var(--surface2, #f9fafb)" }}>
                     Pendentes / Atrasados ({pendentes.length})
                   </div>
@@ -303,7 +304,7 @@ export default function Mensalidades() {
                   )}
                 </div>
                 {/* Coluna direita: pagos */}
-                <div>
+                <div style={{ overflowX: "auto" }}>
                   <div style={{ padding: "0.4rem 1rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", background: "var(--surface2, #f9fafb)" }}>
                     Pagos ({pagos.length})
                   </div>
@@ -366,10 +367,24 @@ export default function Mensalidades() {
               <button className={s.modalClose} onClick={() => setModalRec(false)}>✕</button>
             </div>
             <div className={s.modalBody}>
-              <p style={{ fontSize: "0.9rem", color: "var(--muted)", marginBottom: "1rem" }}>
+              <p style={{ fontSize: "0.9rem", color: "var(--muted)", marginBottom: "0.5rem" }}>
                 Cria mensalidades para todos os {jogadores.filter(j => !j.isento).length} jogadores ativos não-isentos que ainda não têm registro no mês selecionado.
-                {valorPadrao ? ` Valor: R$ ${valorPadrao.toFixed(2)}.` : ""}
               </p>
+              {(() => {
+                const elegíveis = jogadores.filter(j => !j.isento)
+                const comChurrasco = elegíveis.filter(j => j.plano_mensalidade === "com_churrasco")
+                const semChurrasco = elegíveis.filter(j => j.plano_mensalidade === "sem_churrasco")
+                const semPlano = elegíveis.filter(j => !j.plano_mensalidade)
+                const partes: string[] = []
+                if (comChurrasco.length) partes.push(`${comChurrasco.length} com churrasco (R$ ${valorComChurrasco.toFixed(2)})`)
+                if (semChurrasco.length) partes.push(`${semChurrasco.length} sem churrasco (R$ ${valorSemChurrasco.toFixed(2)})`)
+                if (semPlano.length) partes.push(`${semPlano.length} sem plano (R$ ${(valorPadrao ?? 0).toFixed(2)})`)
+                return partes.length > 0 ? (
+                  <div style={{ fontSize: "0.82rem", color: "var(--text)", background: "var(--surface2)", borderRadius: 7, padding: "0.5rem 0.75rem", marginBottom: "0.75rem" }}>
+                    {partes.join(" · ")}
+                  </div>
+                ) : null
+              })()}
               <div className={s.formGroup}>
                 <label className={s.formLabel}>Mês de referência</label>
                 <input className={s.formInput} type="month" value={recMes} onChange={e => setRecMes(e.target.value)} />

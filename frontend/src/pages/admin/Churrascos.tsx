@@ -440,9 +440,14 @@ export default function Churrascos() {
                   <div style={{ display: "flex", gap: "0.5rem" }}>
                     {pModo === "jogador" ? (
                       <select className={f.input} style={{ flex: 1 }} value={pJogadorId} onChange={e => setPJogadorId(e.target.value)}>
-                        {jogadoresPlano.map(j => (
-                          <option key={j.id} value={j.id}>{j.nome}{j.plano_mensalidade === "com_churrasco" ? " (incluso)" : ""}</option>
-                        ))}
+                        {jogadoresPlano.map(j => {
+                          const label = j.plano_mensalidade === "com_churrasco"
+                            ? " (incluso)"
+                            : j.plano_mensalidade === "sem_churrasco"
+                            ? ` (paga R$ ${valorAdicional.toFixed(2)})`
+                            : ` (avulso, paga R$ ${valorAdicional.toFixed(2)})`
+                          return <option key={j.id} value={j.id}>{j.nome}{label}</option>
+                        })}
                       </select>
                     ) : (
                       <input className={f.input} style={{ flex: 1 }} type="text" placeholder="Nome do convidado" value={pNome} onChange={e => setPNome(e.target.value)} required maxLength={80} />

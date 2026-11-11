@@ -1,4 +1,6 @@
 -- Recria sortear_times compatível com o schema real (sem tipo formato_jogo)
+-- SEC-01: a política "sorteio_times: leitura_publica" (FOR SELECT USING (true)) já existe
+-- na migration 20261106000004_sorteio_times.sql — não há gap de segurança aqui.
 CREATE OR REPLACE FUNCTION public.sortear_times(
   p_jogo_id uuid,
   p_num_times integer DEFAULT NULL

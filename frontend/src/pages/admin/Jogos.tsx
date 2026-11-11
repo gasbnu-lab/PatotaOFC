@@ -55,8 +55,10 @@ const STATUS_LABEL: Record<string, string> = {
 
 function isoParaDatetimeLocal(iso: string | null): string {
   if (!iso) return ""
-  // "2026-11-10T14:00:00+00:00" → "2026-11-10T14:00"
-  return iso.slice(0, 16)
+  // Converte UTC → fuso local do navegador antes de preencher datetime-local
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 export default function Jogos() {
@@ -69,6 +71,7 @@ export default function Jogos() {
   const [salvando, setSalvando] = useState(false)
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
   const [convidadosPendentes, setConvidadosPendentes] = useState<ConvidadoPendente[]>([])
+  const [confirmRejeitarId, setConfirmRejeitarId] = useState<string | null>(null)
 
   // Modal de estatísticas
   const [modalEstat, setModalEstat] = useState<Jogo | null>(null)
@@ -453,13 +456,30 @@ export default function Jogos() {
                         >
                           ✓ Aprovar
                         </button>
-                        <button
-                          className={s.btnSecondary}
-                          style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", color: "#dc2626" }}
-                          onClick={() => rejeitarConvidado(c.id)}
-                        >
-                          Rejeitar
-                        </button>
+                        {confirmRejeitarId === c.id ? (
+                          <>
+                            <button
+                              className={s.btnSecondary}
+                              style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none" }}
+                              onClick={() => { rejeitarConvidado(c.id); setConfirmRejeitarId(null) }}
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              className={s.btnSecondary}
+                              style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }}
+                              onClick={() => setConfirmRejeitarId(null)}
+                            >✕</button>
+                          </>
+                        ) : (
+                          <button
+                            className={s.btnSecondary}
+                            style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", color: "#dc2626" }}
+                            onClick={() => setConfirmRejeitarId(c.id)}
+                          >
+                            Rejeitar
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
