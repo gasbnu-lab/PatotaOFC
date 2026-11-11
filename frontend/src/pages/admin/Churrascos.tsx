@@ -327,8 +327,6 @@ export default function Churrascos() {
   async function excluirChurrasco(id: string, e: React.MouseEvent) {
     e.stopPropagation()
     setExcluindo(true)
-    await supabase.from("churrasco_participantes").delete().eq("churrasco_id", id)
-    await supabase.from("churrasco_despesas").delete().eq("churrasco_id", id)
     await supabase.from("churrascos").delete().eq("id", id)
     setConfirmDelId(null)
     setExcluindo(false)
@@ -353,7 +351,7 @@ export default function Churrascos() {
             <button onClick={() => setDetalhe(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: "0.85rem", paddingLeft: 0, marginBottom: "0.25rem" }}>
               ← Voltar
             </button>
-            <div className={s.pageTitulo}>🔥 {detalhe.descricao || `Churrasco de ${fmtData(detalhe.data)}`}</div>
+            <div className={s.pageTitulo}>🔥 {detalhe.descricao || `Churrasco - ${fmtData(detalhe.data)}`}</div>
             <div className={s.pageSubtitulo}>{fmtData(detalhe.data)}</div>
           </div>
         </div>
@@ -550,7 +548,7 @@ export default function Churrascos() {
             <div key={c.id} className={f.extratoRow} style={{ cursor: "pointer" }} onClick={() => abrirDetalhe(c)}>
               <div style={{ fontSize: "1.5rem" }}>🔥</div>
               <div className={f.extratoInfo} style={{ flex: 1 }}>
-                <div className={f.extratoDesc}>{c.descricao || `Churrasco`}</div>
+                <div className={f.extratoDesc}>{c.descricao || `Churrasco - ${fmtData(c.data)}`}</div>
                 <div className={f.extratoData}>{fmtData(c.data)}</div>
               </div>
               <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }} onClick={e => e.stopPropagation()}>

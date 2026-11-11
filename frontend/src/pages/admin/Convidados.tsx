@@ -33,6 +33,7 @@ export default function Convidados() {
   const [convidados, setConvidados] = useState<Convidado[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingConv, setLoadingConv] = useState(false)
+  const [recusarConfirmId, setRecusarConfirmId] = useState<string | null>(null)
 
   // form adicionar convidado
   const [formAberto, setFormAberto] = useState(false)
@@ -231,12 +232,29 @@ export default function Convidados() {
                           >
                             Aprovar
                           </button>
-                          <button
-                            onClick={() => recusar(c.id)}
-                            style={{ padding: "0.3rem 0.7rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: "0.8rem", fontWeight: 700 }}
-                          >
-                            Recusar
-                          </button>
+                          {recusarConfirmId === c.id ? (
+                            <>
+                              <button
+                                onClick={() => { recusar(c.id); setRecusarConfirmId(null) }}
+                                style={{ padding: "0.3rem 0.7rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: "0.8rem", fontWeight: 700 }}
+                              >
+                                Confirmar
+                              </button>
+                              <button
+                                onClick={() => setRecusarConfirmId(null)}
+                                style={{ padding: "0.3rem 0.5rem", background: "none", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", fontSize: "0.8rem", color: "var(--muted)" }}
+                              >
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setRecusarConfirmId(c.id)}
+                              style={{ padding: "0.3rem 0.7rem", background: "var(--surface2)", color: "#dc2626", border: "1px solid #dc2626", borderRadius: 6, cursor: "pointer", fontSize: "0.8rem", fontWeight: 700 }}
+                            >
+                              Recusar
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

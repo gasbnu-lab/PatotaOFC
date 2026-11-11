@@ -43,6 +43,7 @@ export default function Jogadores() {
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
   const [usuarios, setUsuarios] = useState<UsuarioAcesso[]>([])
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [recusarConfirmId, setRecusarConfirmId] = useState<string | null>(null)
   const [vincularModal, setVincularModal] = useState<UsuarioAcesso | null>(null)
   const [vincularJogadorId, setVincularJogadorId] = useState<string>("")
   const [vincularNome, setVincularNome] = useState<string>("")
@@ -356,14 +357,34 @@ export default function Jogadores() {
                               >
                                 ✓ Aprovar
                               </button>
-                              <button
-                                className={s.btnSecondary}
-                                style={{ padding: "0.3rem 0.6rem", fontSize: "0.78rem", color: "#dc2626" }}
-                                onClick={() => aprovarUsuario(u, "recusado")}
-                                disabled={togglingId === u.id}
-                              >
-                                ✕
-                              </button>
+                              {recusarConfirmId === u.id ? (
+                                <>
+                                  <button
+                                    className={s.btnSecondary}
+                                    style={{ padding: "0.3rem 0.6rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none" }}
+                                    onClick={() => { aprovarUsuario(u, "recusado"); setRecusarConfirmId(null) }}
+                                    disabled={togglingId === u.id}
+                                  >
+                                    Confirmar
+                                  </button>
+                                  <button
+                                    className={s.btnSecondary}
+                                    style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }}
+                                    onClick={() => setRecusarConfirmId(null)}
+                                  >
+                                    ✕
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  className={s.btnSecondary}
+                                  style={{ padding: "0.3rem 0.6rem", fontSize: "0.78rem", color: "#dc2626" }}
+                                  onClick={() => setRecusarConfirmId(u.id)}
+                                  disabled={togglingId === u.id}
+                                >
+                                  ✕ Recusar
+                                </button>
+                              )}
                             </>
                           )}
                           {u.status === "aprovado" && (
