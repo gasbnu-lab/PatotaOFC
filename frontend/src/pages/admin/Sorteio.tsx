@@ -55,6 +55,8 @@ export default function Sorteio() {
   const [todosJogadores, setTodosJogadores] = useState<{ id: string; nome: string }[]>([])
   const [confirmadosIds, setConfirmadosIds] = useState<Set<string>>(new Set())
   const [extrasIds, setExtrasIds] = useState<Set<string>>(new Set())
+  const [numTimes, setNumTimes] = useState<string>("")
+  const [tamTime, setTamTime] = useState<string>("")
 
   useEffect(() => { carregar() }, [])
 
@@ -150,7 +152,10 @@ export default function Sorteio() {
       }
     }
 
-    const { data, error } = await supabase.rpc("sortear_times", { p_jogo_id: jogo.id })
+    const rpcArgs: Record<string, unknown> = { p_jogo_id: jogo.id }
+    if (numTimes && parseInt(numTimes) >= 2) rpcArgs.p_num_times = parseInt(numTimes)
+
+    const { data, error } = await supabase.rpc("sortear_times", rpcArgs)
 
     if (error) {
       const msg = error.message.includes("admin")
@@ -269,6 +274,50 @@ export default function Sorteio() {
               </div>
             )
           })()}
+
+          {/* Configuração do sorteio */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+            <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)", marginBottom: "0.6rem" }}>Configuração do sorteio</div>
+            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--muted)", marginBottom: "0.3rem", textTransform: "uppercase" }}>
+                  Nº de times
+                </label>
+                <select
+                  value={numTimes}
+                  onChange={e => setNumTimes(e.target.value)}
+                  style={{ width: "100%", padding: "0.4rem 0.5rem", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)", fontSize: "0.85rem" }}
+                >
+                  <option value="">Automático</option>
+                  {[2,3,4,5,6].map(n => <option key={n} value={n}>{n} times</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--muted)", marginBottom: "0.3rem", textTransform: "uppercase" }}>
+                  Jogadores por time
+                </label>
+                <input
+                  type="number"
+                  min={2}
+                  max={15}
+                  placeholder="Automático"
+                  value={tamTime}
+                  onChange={e => setTamTime(e.target.value)}
+                  style={{ width: "100%", padding: "0.4rem 0.5rem", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)", fontSize: "0.85rem", boxSizing: "border-box" }}
+                />
+              </div>
+            </div>
+            {numTimes && tamTime && parseInt(numTimes) * parseInt(tamTime) > totalParaSortear + 2 && (
+              <div style={{ marginTop: "0.5rem", fontSize: "0.78rem", color: "#d97706" }}>
+                ⚠️ {numTimes} times × {tamTime} jogadores = {parseInt(numTimes) * parseInt(tamTime)} vagas, mas há apenas {totalParaSortear} confirmados.
+              </div>
+            )}
+            {(!numTimes || !tamTime) && (
+              <div style={{ marginTop: "0.4rem", fontSize: "0.75rem", color: "var(--muted)" }}>
+                Deixe em branco para usar o cálculo automático.
+              </div>
+            )}
+          </div>
 
           {!podeSortear && totalParaSortear < MIN_CONFIRMADOS && (
             <div className={ss.erro} style={{ background: "#fef9c3", borderColor: "#f59e0b", color: "#92400e" }}>

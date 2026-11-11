@@ -13,6 +13,7 @@ const NAV = [
   { path: "/admin/mensalidades", label: "Mensalidades", icon: "💰" },
   { path: "/admin/churrascos", label: "Churrascos", icon: "🥩" },
   { path: "/admin/financeiro", label: "Financeiro", icon: "📋" },
+  { path: "/admin/ranking", label: "Ranking", icon: "🏆" },
 ]
 
 const NAV_BOTTOM = [

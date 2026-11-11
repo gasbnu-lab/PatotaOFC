@@ -19,6 +19,15 @@ type ConvidadoPendente = {
   nome_convidado: string
 }
 
+type Participante = {
+  key: string
+  nome: string
+  jogador_id: string | null
+  presenca_id: string | null
+}
+
+type Estat = { gols: number; assistencias: number; gols_sofridos: number }
+
 type Form = {
   data: string
   horario: string
@@ -60,6 +69,12 @@ export default function Jogos() {
   const [salvando, setSalvando] = useState(false)
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
   const [convidadosPendentes, setConvidadosPendentes] = useState<ConvidadoPendente[]>([])
+
+  // Modal de estatísticas
+  const [modalEstat, setModalEstat] = useState<Jogo | null>(null)
+  const [participantes, setParticipantes] = useState<Participante[]>([])
+  const [estats, setEstats] = useState<Record<string, Estat>>({})
+  const [salvandoEstat, setSalvandoEstat] = useState(false)
 
   // Modal recorrente
   const [modalRec, setModalRec] = useState(false)
@@ -233,6 +248,87 @@ export default function Jogos() {
     if (usuario?.patota_id) await carregar(usuario.patota_id)
   }
 
+  async function abrirEstat(j: Jogo) {
+    setModalEstat(j)
+    setParticipantes([])
+    setEstats({})
+
+    // Carrega confirmados (jogadores + convidados aprovados)
+    const { data: pres } = await supabase
+      .from("presencas")
+      .select("id, jogador_id, nome_convidado, convidado, aprovado, jogadores(nome)")
+      .eq("jogo_id", j.id)
+      .eq("confirmado", true)
+
+    const lista: Participante[] = []
+    for (const p of pres ?? []) {
+      if (!p.convidado || p.convidado === false) {
+        if (p.jogador_id) {
+          lista.push({
+            key: `j_${p.jogador_id}`,
+            nome: (p.jogadores as any)?.nome ?? "?",
+            jogador_id: p.jogador_id,
+            presenca_id: null,
+          })
+        }
+      } else if (p.aprovado) {
+        lista.push({
+          key: `c_${p.id}`,
+          nome: p.nome_convidado ?? "Convidado",
+          jogador_id: null,
+          presenca_id: p.id,
+        })
+      }
+    }
+    lista.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+    setParticipantes(lista)
+
+    // Carrega estatísticas existentes
+    const jogIds = lista.filter(p => p.jogador_id).map(p => p.jogador_id!)
+    const presIds = lista.filter(p => p.presenca_id).map(p => p.presenca_id!)
+    const mapaEstat: Record<string, Estat> = {}
+    if (jogIds.length > 0) {
+      const { data: ejogs } = await supabase.from("jogo_estatisticas").select("*").eq("jogo_id", j.id).in("jogador_id", jogIds)
+      for (const e of ejogs ?? []) {
+        mapaEstat[`j_${e.jogador_id}`] = { gols: e.gols, assistencias: e.assistencias, gols_sofridos: e.gols_sofridos }
+      }
+    }
+    if (presIds.length > 0) {
+      const { data: epres } = await supabase.from("jogo_estatisticas").select("*").eq("jogo_id", j.id).in("presenca_id", presIds)
+      for (const e of epres ?? []) {
+        mapaEstat[`c_${e.presenca_id}`] = { gols: e.gols, assistencias: e.assistencias, gols_sofridos: e.gols_sofridos }
+      }
+    }
+    setEstats(mapaEstat)
+  }
+
+  async function salvarEstat() {
+    if (!modalEstat) return
+    setSalvandoEstat(true)
+    for (const p of participantes) {
+      const e = estats[p.key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0 }
+      const payload = {
+        jogo_id: modalEstat.id,
+        jogador_id: p.jogador_id,
+        presenca_id: p.presenca_id,
+        gols: e.gols,
+        assistencias: e.assistencias,
+        gols_sofridos: e.gols_sofridos,
+      }
+      if (p.jogador_id) {
+        await supabase.from("jogo_estatisticas").upsert(payload, { onConflict: "jogo_id,jogador_id" })
+      } else {
+        await supabase.from("jogo_estatisticas").upsert(payload, { onConflict: "jogo_id,presenca_id" })
+      }
+    }
+    setSalvandoEstat(false)
+    setModalEstat(null)
+  }
+
+  function setEstatField(key: string, field: keyof Estat, val: number) {
+    setEstats(prev => ({ ...prev, [key]: { ...(prev[key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0 }), [field]: val } }))
+  }
+
   function fmtData(iso: string) {
     const [a, m, d] = iso.split("-")
     return `${d}/${m}/${a}`
@@ -293,6 +389,11 @@ export default function Jogos() {
                       <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }} onClick={() => abrirEditar(j)}>
                         Editar
                       </button>
+                      {j.data < new Date().toISOString().split("T")[0] && (
+                        <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem" }} onClick={() => abrirEstat(j)}>
+                          📊 Stats
+                        </button>
+                      )}
                       {confirmDelId === j.id ? (
                         <>
                           <button onClick={() => excluir(j.id)} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
@@ -412,6 +513,64 @@ export default function Jogos() {
               <button className={s.btnSecondary} onClick={() => setModalRec(false)}>Fechar</button>
               <button className={s.btnPrimary} onClick={gerarRecorrente} disabled={gerandoRec || !recLocal.trim()}>
                 {gerandoRec ? "Gerando..." : "Gerar jogos"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal estatísticas */}
+      {modalEstat && (
+        <div className={s.modalBackdrop} onClick={e => e.target === e.currentTarget && setModalEstat(null)}>
+          <div className={s.modal} style={{ maxWidth: 560 }}>
+            <div className={s.modalHeader}>
+              <span className={s.modalTitulo}>📊 Estatísticas — {fmtData(modalEstat.data)}</span>
+              <button className={s.modalClose} onClick={() => setModalEstat(null)}>✕</button>
+            </div>
+            <div className={s.modalBody}>
+              {participantes.length === 0 ? (
+                <div style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Nenhum jogador confirmado neste jogo.</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                  <thead>
+                    <tr style={{ color: "var(--muted)", fontSize: "0.72rem", textTransform: "uppercase" }}>
+                      <th style={{ textAlign: "left", padding: "0 0 0.5rem 0", fontWeight: 600 }}>Jogador</th>
+                      <th style={{ textAlign: "center", padding: "0 0 0.5rem 0.4rem", fontWeight: 600 }}>⚽ Gols</th>
+                      <th style={{ textAlign: "center", padding: "0 0 0.5rem 0.4rem", fontWeight: 600 }}>🅰️ Assist.</th>
+                      <th style={{ textAlign: "center", padding: "0 0 0.5rem 0.4rem", fontWeight: 600 }}>🛡️ Sofridos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participantes.map(p => {
+                      const e = estats[p.key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0 }
+                      return (
+                        <tr key={p.key} style={{ borderTop: "1px solid var(--border)" }}>
+                          <td style={{ padding: "0.4rem 0", fontWeight: 500, color: "var(--text)" }}>
+                            {p.nome}
+                            {p.presenca_id && <span style={{ fontSize: "0.72rem", color: "var(--muted)", marginLeft: 4 }}>(conv.)</span>}
+                          </td>
+                          {(["gols", "assistencias", "gols_sofridos"] as const).map(field => (
+                            <td key={field} style={{ textAlign: "center", padding: "0.4rem 0.4rem" }}>
+                              <input
+                                type="number"
+                                min={0}
+                                value={e[field]}
+                                onChange={ev => setEstatField(p.key, field, Math.max(0, parseInt(ev.target.value) || 0))}
+                                style={{ width: 52, textAlign: "center", padding: "0.25rem", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface2)", color: "var(--text)", fontSize: "0.85rem" }}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className={s.modalFooter}>
+              <button className={s.btnSecondary} onClick={() => setModalEstat(null)}>Fechar</button>
+              <button className={s.btnPrimary} onClick={salvarEstat} disabled={salvandoEstat || participantes.length === 0}>
+                {salvandoEstat ? "Salvando..." : "Salvar estatísticas"}
               </button>
             </div>
           </div>

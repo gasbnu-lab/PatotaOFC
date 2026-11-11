@@ -16,6 +16,7 @@ import Financeiro from "./pages/admin/Financeiro"
 import Config from "./pages/admin/Config"
 import Perfil from "./pages/admin/Perfil"
 import Sorteio from "./pages/admin/Sorteio"
+import Ranking from "./pages/admin/Ranking"
 import SorteioPublico from "./pages/SorteioPublico"
 import { useAuth } from "./lib/useAuth"
 
@@ -73,6 +74,7 @@ export default function App() {
           <Route path="mensalidades" element={<Mensalidades />} />
           <Route path="churrascos" element={<Churrascos />} />
           <Route path="financeiro" element={<Financeiro />} />
+          <Route path="ranking" element={<Ranking />} />
           <Route path="config" element={<Config />} />
           <Route path="perfil" element={<Perfil />} />
         </Route>
