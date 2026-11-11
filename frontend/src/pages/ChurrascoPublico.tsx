@@ -96,7 +96,7 @@ export default function ChurrascoPublico() {
             <div style={{ marginBottom: "1.5rem" }}>
               <div style={{ fontSize: "2rem", marginBottom: "0.25rem" }}>🔥</div>
               <h1 style={{ fontSize: "1.4rem", fontWeight: 800, margin: 0 }}>
-                {churrasco.descricao || "Churrasco"}
+                Churrasco - {fmtData(churrasco.data)}
               </h1>
               <div style={{ color: "var(--muted, #888)", fontSize: "0.9rem", marginTop: "0.25rem" }}>{fmtData(churrasco.data)}</div>
             </div>

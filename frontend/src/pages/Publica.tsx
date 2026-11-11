@@ -117,9 +117,12 @@ export default function Publica() {
   const [email, setEmail] = useState("")
   const [loadingConf, setLoadingConf] = useState(false)
   const [convidadoNome, setConvidadoNome] = useState("")
+  const [convidadoPosicao, setConvidadoPosicao] = useState<"goleiro" | "linha" | "qualquer">("qualquer")
+  const [convidadoRating, setConvidadoRating] = useState(3)
   const [adicionandoConvidado, setAdicionandoConvidado] = useState(false)
   const [loadingChurr, setLoadingChurr] = useState(false)
   const [valorAdicional, setValorAdicional] = useState(15)
+  const [mensAbertas, setMensAbertas] = useState<Record<string, boolean>>({ pago: false, pendente: true, atrasado: true })
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light")
@@ -258,12 +261,16 @@ export default function Publica() {
         convidado: true,
         confirmado: true,
         aprovado: false,
+        posicao_convidado: convidadoPosicao,
+        rating_convidado: convidadoRating,
       })
     }
 
     showToast(confirmar ? rand(FRASES_OK) : rand(FRASES_NAO))
     setEmail("")
     setConvidadoNome("")
+    setConvidadoPosicao("qualquer")
+    setConvidadoRating(3)
     setAdicionandoConvidado(false)
     setConfirmando(false)
     // Sincroniza com o servidor em background sem mostrar spinner
@@ -425,7 +432,19 @@ export default function Publica() {
                 <div className={styles.jogoDataHora}>
                   {diaSemana(jogo.data)}, {fmtData(jogo.data)} · {fmtHora(jogo.horario)}
                 </div>
-                <div className={styles.jogoLocal}>📍 {jogo.local}</div>
+                <div className={styles.jogoLocal}>
+                  📍 {jogo.local}
+                  {jogo.local && (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(jogo.local)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ marginLeft: "0.5rem", fontSize: "0.78rem", color: "var(--accent, #6366f1)", textDecoration: "none", whiteSpace: "nowrap" }}
+                    >
+                      🗺️ Ver rota
+                    </a>
+                  )}
+                </div>
                 {deadlineCountdown && (
                   <div style={{ marginTop: "0.4rem", fontSize: "0.78rem", color: "#b45309", background: "#fef3c7", display: "inline-block", padding: "0.2rem 0.5rem", borderRadius: 6 }}>
                     ⏳ {deadlineCountdown}
@@ -469,14 +488,28 @@ export default function Publica() {
                           : "Vai no jogo?"}
                       </p>
                       {adicionandoConvidado && (
-                        <input
-                          className={styles.emailInput}
-                          type="text"
-                          placeholder="Nome do convidado"
-                          value={convidadoNome}
-                          onChange={e => setConvidadoNome(e.target.value)}
-                          autoFocus
-                        />
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", width: "100%" }}>
+                          <input
+                            className={styles.emailInput}
+                            type="text"
+                            placeholder="Nome do convidado"
+                            value={convidadoNome}
+                            onChange={e => setConvidadoNome(e.target.value)}
+                            autoFocus
+                          />
+                          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                            <select value={convidadoPosicao} onChange={e => setConvidadoPosicao(e.target.value as any)} style={{ flex: 1, minWidth: 100, padding: "0.35rem 0.5rem", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface2)", fontSize: "0.82rem", color: "var(--text)" }}>
+                              <option value="qualquer">Qualquer posição</option>
+                              <option value="goleiro">Goleiro</option>
+                              <option value="linha">Linha</option>
+                            </select>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.2rem" }}>
+                              {[1,2,3,4,5].map(n => (
+                                <button key={n} type="button" onClick={() => setConvidadoRating(n)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", padding: "0 1px", color: n <= convidadoRating ? "#f59e0b" : "var(--border)" }}>★</button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       )}
                       <div className={styles.confirmBtns}>
                         <button
@@ -525,14 +558,28 @@ export default function Publica() {
                         autoFocus
                       />
                       {adicionandoConvidado && (
-                        <input
-                          className={styles.emailInput}
-                          style={{ marginTop: "0.5rem" }}
-                          type="text"
-                          placeholder="Nome do convidado"
-                          value={convidadoNome}
-                          onChange={e => setConvidadoNome(e.target.value)}
-                        />
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                          <input
+                            className={styles.emailInput}
+                            style={{ marginTop: "0.5rem" }}
+                            type="text"
+                            placeholder="Nome do convidado"
+                            value={convidadoNome}
+                            onChange={e => setConvidadoNome(e.target.value)}
+                          />
+                          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                            <select value={convidadoPosicao} onChange={e => setConvidadoPosicao(e.target.value as any)} style={{ flex: 1, minWidth: 100, padding: "0.35rem 0.5rem", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface2)", fontSize: "0.82rem", color: "var(--text)" }}>
+                              <option value="qualquer">Qualquer posição</option>
+                              <option value="goleiro">Goleiro</option>
+                              <option value="linha">Linha</option>
+                            </select>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.2rem" }}>
+                              {[1,2,3,4,5].map(n => (
+                                <button key={n} type="button" onClick={() => setConvidadoRating(n)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", padding: "0 1px", color: n <= convidadoRating ? "#f59e0b" : "var(--border)" }}>★</button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       )}
                       <button
                         style={{ background: "none", border: "none", fontSize: "0.78rem", color: "var(--muted)", cursor: "pointer", textDecoration: "underline", padding: "0.25rem 0", alignSelf: "flex-start" }}
@@ -613,7 +660,7 @@ export default function Publica() {
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
                     <span style={{ fontSize: "1.1rem" }}>🥩</span>
                     <span style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--text)" }}>
-                      Churrasco da semana · {fmtData(churrascoSemana.data)}
+                      Churrasco - {fmtData(churrascoSemana.data)}
                     </span>
                   </div>
                   <p style={{ fontSize: "0.82rem", color: "var(--muted)", margin: "0 0 0.5rem" }}>
@@ -676,26 +723,48 @@ export default function Publica() {
         )}
 
         {/* Mensalidades */}
-        {mensDoMes.length > 0 && (
-          <div className={styles.card}>
-            <div className={styles.cardPad} style={{ paddingBottom: "0.5rem" }}>
-              <div className={styles.secLabel}>Mensalidades · {mesNome(mesAtual!)}/{mesAtual!.split("-")[0]}</div>
+        {mensDoMes.length > 0 && (() => {
+          const grupos = {
+            atrasado: mensDoMes.filter(m => statusMens(m.mes_ref, m.pago) === "atrasado").sort((a, b) => (a.jogadores?.nome ?? "").localeCompare(b.jogadores?.nome ?? "")),
+            pendente: mensDoMes.filter(m => statusMens(m.mes_ref, m.pago) === "pendente").sort((a, b) => (a.jogadores?.nome ?? "").localeCompare(b.jogadores?.nome ?? "")),
+            pago: mensDoMes.filter(m => statusMens(m.mes_ref, m.pago) === "pago").sort((a, b) => (a.jogadores?.nome ?? "").localeCompare(b.jogadores?.nome ?? "")),
+          }
+          const GrupoLabel: Record<string, string> = { atrasado: "⚠️ Atrasados", pendente: "⏳ Pendentes", pago: "✅ Pagos" }
+          const GrupoStyle: Record<string, string> = { atrasado: "#dc2626", pendente: "#d97706", pago: "#16a34a" }
+          return (
+            <div className={styles.card}>
+              <div className={styles.cardPad} style={{ paddingBottom: "0.5rem" }}>
+                <div className={styles.secLabel}>Mensalidades · {mesNome(mesAtual!)}/{mesAtual!.split("-")[0]}</div>
+              </div>
+              {(["atrasado", "pendente", "pago"] as const).map(grupo => {
+                const lista = grupos[grupo]
+                if (lista.length === 0) return null
+                const aberto = mensAbertas[grupo]
+                return (
+                  <div key={grupo}>
+                    <button
+                      onClick={() => setMensAbertas(prev => ({ ...prev, [grupo]: !prev[grupo] }))}
+                      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.55rem 1rem", background: "none", border: "none", borderTop: "1px solid var(--border)", cursor: "pointer", textAlign: "left" }}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: "0.82rem", color: GrupoStyle[grupo] }}>{GrupoLabel[grupo]}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <span style={{ fontSize: "0.75rem", color: "var(--muted)", background: "var(--surface2)", borderRadius: 999, padding: "0.1rem 0.5rem" }}>{lista.length}</span>
+                        <span style={{ color: "var(--muted)", fontSize: "0.9rem" }}>{aberto ? "▲" : "▼"}</span>
+                      </span>
+                    </button>
+                    {aberto && lista.map(m => (
+                      <div key={m.id} className={styles.mensRow}>
+                        <div className={styles.mensAvatar}>{iniciais(m.jogadores?.nome ?? "?")}</div>
+                        <span className={styles.mensNome}>{m.jogadores?.nome ?? "—"}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+              <div className={styles.mensLegenda}>Vencimento: todo dia 9</div>
             </div>
-            {mensDoMes.map(m => {
-              const st = statusMens(m.mes_ref, m.pago)
-              return (
-                <div key={m.id} className={styles.mensRow}>
-                  <div className={styles.mensAvatar}>{iniciais(m.jogadores?.nome ?? "?")}</div>
-                  <span className={styles.mensNome}>{m.jogadores?.nome ?? "—"}</span>
-                  <span className={`${styles.badge} ${styles[`badge${st.charAt(0).toUpperCase() + st.slice(1)}`]}`}>
-                    {st === "pago" ? "PAGO" : st === "atrasado" ? "ATRASADO" : "PENDENTE"}
-                  </span>
-                </div>
-              )
-            })}
-            <div className={styles.mensLegenda}>Vencimento: todo dia 9</div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Churrasco */}
         {churrascoAtual && (
@@ -706,7 +775,7 @@ export default function Publica() {
           >
             <span style={{ fontSize: "1.5rem" }}>🥩</span>
             <div className={styles.churrTextos}>
-              <strong>Churrasco do mês</strong>
+              <strong>Churrasco - {fmtData(churrascoAtual.data)}</strong>
               <span>
                 {fmtData(churrascoAtual.data)} · R$ {totalChurr.toFixed(2)} · {churrascoAtual.churrasco_participantes.length} pessoas
               </span>

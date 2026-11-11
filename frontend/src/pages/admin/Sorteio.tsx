@@ -52,6 +52,9 @@ export default function Sorteio() {
   const [erro, setErro] = useState<string | null>(null)
   const [sorteioSalvo, setSorteioSalvo] = useState(false)
   const [numConfirmados, setNumConfirmados] = useState(0)
+  const [todosJogadores, setTodosJogadores] = useState<{ id: string; nome: string }[]>([])
+  const [confirmadosIds, setConfirmadosIds] = useState<Set<string>>(new Set())
+  const [extrasIds, setExtrasIds] = useState<Set<string>>(new Set())
 
   useEffect(() => { carregar() }, [])
 
@@ -72,14 +75,26 @@ export default function Sorteio() {
     const proximoJogo = jogos?.[0] ?? null
     setJogo(proximoJogo)
 
+    // Carrega todos os jogadores da patota
+    const { data: jogs } = await supabase
+      .from("jogadores")
+      .select("id, nome")
+      .eq("patota_id", usuario.patota_id)
+      .eq("ativo", true)
+      .order("nome")
+    setTodosJogadores(jogs ?? [])
+
     if (proximoJogo) {
-      // conta confirmados
-      const { count } = await supabase
+      // conta confirmados e guarda quais jogadores confirmaram
+      const { data: presConf } = await supabase
         .from("presencas")
-        .select("id", { count: "exact", head: true })
+        .select("jogador_id")
         .eq("jogo_id", proximoJogo.id)
         .eq("confirmado", true)
-      setNumConfirmados(count ?? 0)
+      const ids = new Set((presConf ?? []).map((p: any) => p.jogador_id).filter(Boolean) as string[])
+      setConfirmadosIds(ids)
+      const count = ids.size + (presConf ?? []).filter((p: any) => !p.jogador_id).length
+      setNumConfirmados(count)
 
       const { data: salvo } = await supabase
         .from("sorteio_times")
@@ -106,14 +121,34 @@ export default function Sorteio() {
     return Array.from(mapa.entries()).map(([label, jogadores]) => ({ label, jogadores }))
   }
 
+  function toggleExtra(id: string) {
+    setExtrasIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const totalParaSortear = numConfirmados + extrasIds.size
+
   async function sortear() {
     if (!jogo) return
-    if (numConfirmados < MIN_CONFIRMADOS) {
-      setErro(`São necessários pelo menos ${MIN_CONFIRMADOS} confirmados para sortear. Atualmente: ${numConfirmados}.`)
+    if (totalParaSortear < MIN_CONFIRMADOS) {
+      setErro(`São necessários pelo menos ${MIN_CONFIRMADOS} confirmados para sortear. Atualmente: ${totalParaSortear}.`)
       return
     }
     setSorteando(true)
     setErro(null)
+
+    // Inserir presença confirmada para os extras selecionados
+    if (extrasIds.size > 0) {
+      const inserts = Array.from(extrasIds)
+        .filter(id => !confirmadosIds.has(id))
+        .map(jogador_id => ({ jogo_id: jogo.id, jogador_id, confirmado: true, convidado: false, aprovado: false }))
+      if (inserts.length > 0) {
+        await supabase.from("presencas").upsert(inserts, { onConflict: "jogo_id,jogador_id" })
+      }
+    }
 
     const { data, error } = await supabase.rpc("sortear_times", { p_jogo_id: jogo.id })
 
@@ -179,8 +214,8 @@ export default function Sorteio() {
             <div className={ss.jogoData}>{diaSemana(jogo.data)}, {fmtData(jogo.data)} · {fmtHora(jogo.horario)}</div>
             <div className={ss.jogoLocal}>📍 {jogo.local}</div>
           </div>
-          <div className={ss.jogoBadge} style={{ color: podeSortear ? "#16a34a" : "#dc2626" }}>
-            {numConfirmados}/{MIN_CONFIRMADOS} confirmados
+          <div className={ss.jogoBadge} style={{ color: totalParaSortear >= MIN_CONFIRMADOS ? "#16a34a" : "#dc2626" }}>
+            {numConfirmados}/{MIN_CONFIRMADOS} confirmados{extrasIds.size > 0 ? ` (+${extrasIds.size})` : ""}
           </div>
         </div>
       ) : (
@@ -192,9 +227,34 @@ export default function Sorteio() {
 
       {jogo && (
         <>
-          {!podeSortear && (
+          {/* Jogadores não confirmados que admin pode incluir manualmente */}
+          {todosJogadores.filter(j => !confirmadosIds.has(j.id)).length > 0 && (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+              <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)", marginBottom: "0.5rem" }}>
+                Incluir manualmente no sorteio
+              </div>
+              <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginBottom: "0.6rem" }}>
+                Marque jogadores que vão aparecer mas ainda não confirmaram no app. A presença deles será registrada como confirmada.
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                {todosJogadores.filter(j => !confirmadosIds.has(j.id)).map(j => (
+                  <label key={j.id} style={{ display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer", padding: "0.3rem 0.6rem", borderRadius: 6, border: `1px solid ${extrasIds.has(j.id) ? "var(--primary, #6366f1)" : "var(--border)"}`, background: extrasIds.has(j.id) ? "var(--accent-bg, #eef2ff)" : "var(--surface2)", fontSize: "0.82rem", fontWeight: extrasIds.has(j.id) ? 600 : 400, color: "var(--text)" }}>
+                    <input type="checkbox" checked={extrasIds.has(j.id)} onChange={() => toggleExtra(j.id)} style={{ width: 14, height: 14, cursor: "pointer" }} />
+                    {j.nome}
+                  </label>
+                ))}
+              </div>
+              {extrasIds.size > 0 && (
+                <div style={{ marginTop: "0.5rem", fontSize: "0.78rem", color: "var(--muted)" }}>
+                  {extrasIds.size} extra{extrasIds.size !== 1 ? "s" : ""} selecionado{extrasIds.size !== 1 ? "s" : ""} · total para sorteio: {totalParaSortear}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!podeSortear && totalParaSortear < MIN_CONFIRMADOS && (
             <div className={ss.erro} style={{ background: "#fef9c3", borderColor: "#f59e0b", color: "#92400e" }}>
-              Aguardando mais jogadores. Mínimo de {MIN_CONFIRMADOS} confirmados para sortear (faltam {MIN_CONFIRMADOS - numConfirmados}).
+              Aguardando mais jogadores. Mínimo de {MIN_CONFIRMADOS} para sortear (faltam {MIN_CONFIRMADOS - totalParaSortear}).
             </div>
           )}
 
@@ -203,8 +263,8 @@ export default function Sorteio() {
           <button
             className={ss.btnSortear}
             onClick={sortear}
-            disabled={sorteando || !podeSortear}
-            style={!podeSortear ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+            disabled={sorteando || totalParaSortear < MIN_CONFIRMADOS}
+            style={totalParaSortear < MIN_CONFIRMADOS ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
           >
             {sorteando ? (
               <><span className={ss.btnSpinner} /> Sorteando...</>
@@ -237,9 +297,9 @@ export default function Sorteio() {
             </div>
           )}
 
-          {times.length === 0 && !erro && podeSortear && (
+          {times.length === 0 && !erro && totalParaSortear >= MIN_CONFIRMADOS && (
             <div className={ss.hint}>
-              Clique em "Sortear times" para gerar os times balanceados com os {numConfirmados} jogadores confirmados.
+              Clique em "Sortear times" para gerar os times balanceados com os {totalParaSortear} jogadores.
             </div>
           )}
         </>

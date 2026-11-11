@@ -14,6 +14,7 @@ type Churrasco = {
   data: string
   descricao: string | null
   criado_em: string
+  encerrado_em: string | null
 }
 
 type Despesa = {
@@ -79,6 +80,9 @@ export default function Churrascos() {
   const [salvandoDespesa, setSalvandoDespesa] = useState(false)
   const [erroDespesa, setErroDespesa] = useState<string | null>(null)
 
+  const [encerrando, setEncerrando] = useState(false)
+  const [erroEncerrar, setErroEncerrar] = useState<string | null>(null)
+
   // form participante: modo jogador ou avulso
   const [formPartic, setFormPartic] = useState(false)
   const [pModo, setPModo] = useState<"jogador" | "avulso">("jogador")
@@ -92,7 +96,7 @@ export default function Churrascos() {
     setLoading(true)
     const { data } = await supabase
       .from("churrascos")
-      .select("id, data, descricao, criado_em")
+      .select("id, data, descricao, criado_em, encerrado_em")
       .eq("patota_id", usuario.patota_id)
       .order("data", { ascending: false })
     setChurrascos(data ?? [])
@@ -169,7 +173,7 @@ export default function Churrascos() {
     const { data, error } = await supabase
       .from("churrascos")
       .insert({ data: fData, descricao: fDesc.trim() || null, patota_id: usuario.patota_id })
-      .select("id, data, descricao, criado_em")
+      .select("id, data, descricao, criado_em, encerrado_em")
       .single()
     setSalvando(false)
     if (error) { setErro(`Erro: ${error.message}`); return }
@@ -256,6 +260,53 @@ export default function Churrascos() {
     await carregarDetalhe(detalhe.id)
   }
 
+  async function encerrarChurrasco() {
+    if (!detalhe) return
+    setErroEncerrar(null)
+    setEncerrando(true)
+
+    // Idempotência: verificar se já foi encerrado
+    const { data: churr } = await supabase.from("churrascos").select("encerrado_em").eq("id", detalhe.id).single()
+    if (churr?.encerrado_em) {
+      setErroEncerrar("Este churrasco já foi encerrado.")
+      setEncerrando(false)
+      return
+    }
+
+    // Lançar saídas para cada despesa
+    for (const d of despesas) {
+      await supabase.from("lancamentos").insert({
+        tipo: "saida",
+        valor: d.valor,
+        descricao: `Churrasco ${fmtData(detalhe.data)} — ${d.descricao}`,
+        data: detalhe.data,
+        patota_id: usuario.patota_id,
+        referencia_tipo: "churrasco_despesa",
+        referencia_id: d.id,
+      })
+    }
+
+    // Lançar entradas para cada participante pago
+    for (const p of participantes.filter(p => p.status === "pago" && p.valor_devido > 0)) {
+      await supabase.from("lancamentos").insert({
+        tipo: "entrada",
+        valor: p.valor_devido,
+        descricao: `Churrasco ${fmtData(detalhe.data)} — ${p.nome}`,
+        data: detalhe.data,
+        patota_id: usuario.patota_id,
+        referencia_tipo: "churrasco_participante",
+        referencia_id: p.id,
+      })
+    }
+
+    // Marcar como encerrado
+    await supabase.from("churrascos").update({ encerrado_em: new Date().toISOString() }).eq("id", detalhe.id)
+
+    setDetalhe(prev => prev ? { ...prev, encerrado_em: new Date().toISOString() } : prev)
+    setEncerrando(false)
+    await carregarLista()
+  }
+
   function abrirEditar(c: Churrasco, e: React.MouseEvent) {
     e.stopPropagation()
     setEditando(c)
@@ -309,6 +360,16 @@ export default function Churrascos() {
 
         {loadingDetalhe ? <div className={f.spinner} /> : (
           <>
+            {/* Aviso encerrado */}
+            {detalhe.encerrado_em && (
+              <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 10, padding: "0.75rem 1rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span>✅</span>
+                <span style={{ fontSize: "0.88rem", color: "#15803d", fontWeight: 600 }}>
+                  Encerrado em {fmtData(detalhe.encerrado_em.split("T")[0])} — lançamentos já registrados no financeiro.
+                </span>
+              </div>
+            )}
+
             {/* Resumo financeiro */}
             <div className={f.saldoGrid} style={{ gridTemplateColumns: "1fr 1fr 1fr", marginBottom: "1.25rem" }}>
               <div className={f.saldoCard}>
@@ -329,9 +390,11 @@ export default function Churrascos() {
             <div className={f.section}>
               <div className={f.sectionHeader}>
                 <div className={f.sectionTitulo} style={{ margin: 0 }}>Despesas</div>
-                <button className={f.btnNovo} onClick={() => setFormDespesa(v => !v)}>
-                  {formDespesa ? "✕ Cancelar" : "+ Despesa"}
-                </button>
+                {!detalhe.encerrado_em && (
+                  <button className={f.btnNovo} onClick={() => setFormDespesa(v => !v)}>
+                    {formDespesa ? "✕ Cancelar" : "+ Despesa"}
+                  </button>
+                )}
               </div>
 
               {formDespesa && (
@@ -361,13 +424,34 @@ export default function Churrascos() {
               )}
             </div>
 
+            {/* Encerrar churrasco */}
+            {!detalhe.encerrado_em && (
+              <div style={{ marginBottom: "1.5rem", padding: "0.9rem 1rem", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: "0.88rem", color: "#92400e", marginBottom: "0.4rem" }}>Encerrar churrasco</div>
+                <div style={{ fontSize: "0.78rem", color: "#b45309", marginBottom: "0.65rem" }}>
+                  Lança cada despesa como saída e cada pagamento confirmado como entrada no financeiro. Ação idempotente — pode ser desfeita apenas deletando os lançamentos manualmente.
+                </div>
+                {erroEncerrar && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{erroEncerrar}</div>}
+                <button
+                  onClick={encerrarChurrasco}
+                  disabled={encerrando || despesas.length === 0}
+                  style={{ padding: "0.45rem 1rem", background: encerrando || despesas.length === 0 ? "#e5e7eb" : "#f59e0b", color: encerrando || despesas.length === 0 ? "#9ca3af" : "#fff", border: "none", borderRadius: 7, cursor: despesas.length === 0 ? "not-allowed" : "pointer", fontWeight: 700, fontSize: "0.85rem" }}
+                >
+                  {encerrando ? "Lançando..." : "🔒 Encerrar e lançar no financeiro"}
+                </button>
+                {despesas.length === 0 && <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: "0.35rem" }}>Adicione ao menos uma despesa antes de encerrar.</div>}
+              </div>
+            )}
+
             {/* Participantes */}
             <div className={f.section}>
               <div className={f.sectionHeader}>
                 <div className={f.sectionTitulo} style={{ margin: 0 }}>Participantes</div>
-                <button className={f.btnNovo} onClick={() => setFormPartic(v => !v)}>
-                  {formPartic ? "✕ Cancelar" : "+ Participante"}
-                </button>
+                {!detalhe.encerrado_em && (
+                  <button className={f.btnNovo} onClick={() => setFormPartic(v => !v)}>
+                    {formPartic ? "✕ Cancelar" : "+ Participante"}
+                  </button>
+                )}
               </div>
 
               {formPartic && (
