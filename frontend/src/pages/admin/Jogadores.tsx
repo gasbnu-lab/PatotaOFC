@@ -12,6 +12,7 @@ type Jogador = {
   ativo: boolean
   isento: boolean
   plano_mensalidade: "com_churrasco" | "sem_churrasco" | null
+  usuario_id: string | null
 }
 
 type UsuarioAcesso = {
@@ -42,6 +43,10 @@ export default function Jogadores() {
   const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
   const [usuarios, setUsuarios] = useState<UsuarioAcesso[]>([])
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [vincularModal, setVincularModal] = useState<UsuarioAcesso | null>(null)
+  const [vincularJogadorId, setVincularJogadorId] = useState<string>("")
+  const [vincularNome, setVincularNome] = useState<string>("")
+  const [salvandoVinculo, setSalvandoVinculo] = useState(false)
 
   const adminEhJogador = jogadores.some(
     j => j.email && usuario?.email && j.email.toLowerCase() === usuario.email.toLowerCase()
@@ -73,6 +78,18 @@ export default function Jogadores() {
   async function aprovarUsuario(u: UsuarioAcesso, novoStatus: "aprovado" | "recusado") {
     setTogglingId(u.id)
     await supabase.from("usuarios").update({ status: novoStatus }).eq("id", u.id)
+
+    if (novoStatus === "aprovado" && u.email) {
+      // Tentar vincular automaticamente a um jogador com mesmo email
+      const jogadorMatch = jogadores.find(
+        j => j.email && j.email.toLowerCase() === u.email!.toLowerCase() && !j.usuario_id
+      )
+      if (jogadorMatch) {
+        await supabase.from("jogadores").update({ usuario_id: u.id }).eq("id", jogadorMatch.id)
+        if (usuario?.patota_id) await carregar(usuario.patota_id)
+      }
+    }
+
     setUsuarios(prev => prev.map(x => x.id === u.id ? { ...x, status: novoStatus } : x))
     setTogglingId(null)
   }
@@ -136,6 +153,41 @@ export default function Jogadores() {
     await supabase.from("jogadores").delete().eq("id", id)
     setConfirmDelId(null)
     if (usuario?.patota_id) await carregar(usuario.patota_id)
+  }
+
+  // Usuários aprovados sem jogador vinculado (pelo usuario_id)
+  const usuariosSemVinculo = usuarios.filter(u =>
+    u.status === "aprovado" && !jogadores.some(j => j.usuario_id === u.id)
+  )
+
+  function abrirVincularModal(u: UsuarioAcesso) {
+    setVincularModal(u)
+    setVincularJogadorId("")
+    setVincularNome(u.nome)
+  }
+
+  async function vincularComo(tipo: "novo" | "existente") {
+    if (!vincularModal || !usuario?.patota_id) return
+    setSalvandoVinculo(true)
+
+    if (tipo === "existente" && vincularJogadorId) {
+      await supabase.from("jogadores").update({ usuario_id: vincularModal.id }).eq("id", vincularJogadorId)
+    } else if (tipo === "novo") {
+      await supabase.from("jogadores").insert({
+        nome: vincularNome.trim() || vincularModal.nome,
+        email: vincularModal.email,
+        ativo: true,
+        patota_id: usuario.patota_id,
+        posicao: "qualquer",
+        nota: 5,
+        isento: false,
+        usuario_id: vincularModal.id,
+      })
+    }
+
+    await carregar(usuario.patota_id)
+    setVincularModal(null)
+    setSalvandoVinculo(false)
   }
 
   if (loading) return <div className={s.page}><div className={s.empty}>Carregando...</div></div>
@@ -336,6 +388,113 @@ export default function Jogadores() {
           )}
         </div>
       </div>
+
+      {usuariosSemVinculo.length > 0 && (
+        <div style={{ marginTop: "2rem" }}>
+          <div className={s.pageHeader} style={{ marginBottom: "0.75rem" }}>
+            <div>
+              <h2 className={s.pageTitulo} style={{ fontSize: "1.1rem" }}>Usuários sem jogador vinculado</h2>
+              <div className={s.pageSubtitulo}>
+                {usuariosSemVinculo.length} usuário{usuariosSemVinculo.length !== 1 ? "s" : ""} aprovado{usuariosSemVinculo.length !== 1 ? "s" : ""} sem ficha de jogador
+              </div>
+            </div>
+          </div>
+          <div className={s.card}>
+            <table className={s.table}>
+              <thead>
+                <tr>
+                  <th>Usuário</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {usuariosSemVinculo.map(u => (
+                  <tr key={u.id}>
+                    <td>
+                      <div>
+                        <div style={{ fontWeight: 500, color: "var(--text)" }}>{u.nome}</div>
+                        {u.email && <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{u.email}</div>}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                        <button
+                          className={s.btnPrimary}
+                          style={{ padding: "0.3rem 0.8rem", fontSize: "0.78rem" }}
+                          onClick={() => abrirVincularModal(u)}
+                        >
+                          Vincular jogador
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {vincularModal && (
+        <div className={s.modalBackdrop} onClick={e => e.target === e.currentTarget && setVincularModal(null)}>
+          <div className={s.modal}>
+            <div className={s.modalHeader}>
+              <span className={s.modalTitulo}>Vincular jogador — {vincularModal.nome}</span>
+              <button className={s.modalClose} onClick={() => setVincularModal(null)}>✕</button>
+            </div>
+            <div className={s.modalBody}>
+              <div style={{ marginBottom: "1.25rem" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)", marginBottom: "0.75rem" }}>
+                  Cadastrar como novo jogador
+                </div>
+                <div className={s.formGroup}>
+                  <label className={s.formLabel}>Nome do jogador</label>
+                  <input
+                    className={s.formInput}
+                    value={vincularNome}
+                    onChange={e => setVincularNome(e.target.value)}
+                    placeholder={vincularModal.nome}
+                  />
+                </div>
+                <button
+                  className={s.btnPrimary}
+                  style={{ marginTop: "0.5rem", width: "100%" }}
+                  onClick={() => vincularComo("novo")}
+                  disabled={salvandoVinculo}
+                >
+                  {salvandoVinculo ? "Salvando..." : "✓ Criar novo jogador"}
+                </button>
+              </div>
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: "1.25rem" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text)", marginBottom: "0.75rem" }}>
+                  Ou vincular a jogador existente
+                </div>
+                <select
+                  className={s.formSelect}
+                  value={vincularJogadorId}
+                  onChange={e => setVincularJogadorId(e.target.value)}
+                >
+                  <option value="">— Selecionar jogador —</option>
+                  {jogadores
+                    .filter(j => !j.usuario_id)
+                    .map(j => (
+                      <option key={j.id} value={j.id}>{j.nome}{j.email ? ` (${j.email})` : ""}</option>
+                    ))
+                  }
+                </select>
+                <button
+                  className={s.btnSecondary}
+                  style={{ marginTop: "0.5rem", width: "100%" }}
+                  onClick={() => vincularComo("existente")}
+                  disabled={!vincularJogadorId || salvandoVinculo}
+                >
+                  {salvandoVinculo ? "Salvando..." : "Vincular ao selecionado"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div className={s.modalBackdrop} onClick={e => e.target === e.currentTarget && setModal(false)}>
