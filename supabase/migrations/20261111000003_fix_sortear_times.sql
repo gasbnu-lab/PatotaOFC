@@ -53,27 +53,29 @@ BEGIN
 
   -- Distribui serpentine por nota (maior primeiro)
   FOR v_pessoa IN
-    SELECT
-      p.jogador_id                                             AS jid,
-      NULL::uuid                                               AS cid,
-      COALESCE(j.nota, 3)                                      AS rating,
-      j.nome                                                   AS nome
-    FROM public.presencas p
-    JOIN public.jogadores j ON j.id = p.jogador_id
-    WHERE p.jogo_id = p_jogo_id
-      AND p.confirmado = true
-      AND (p.convidado = false OR p.convidado IS NULL)
-    UNION ALL
-    SELECT
-      NULL::uuid,
-      p.id,
-      COALESCE(p.rating_convidado, p.rating_habilidade, 3),
-      COALESCE(p.nome_convidado, 'Convidado')
-    FROM public.presencas p
-    WHERE p.jogo_id = p_jogo_id
-      AND p.confirmado = true
-      AND p.convidado = true
-      AND p.aprovado = true
+    SELECT * FROM (
+      SELECT
+        p.jogador_id                                             AS jid,
+        NULL::uuid                                               AS cid,
+        COALESCE(j.nota, 3)                                      AS rating,
+        j.nome                                                   AS nome
+      FROM public.presencas p
+      JOIN public.jogadores j ON j.id = p.jogador_id
+      WHERE p.jogo_id = p_jogo_id
+        AND p.confirmado = true
+        AND (p.convidado = false OR p.convidado IS NULL)
+      UNION ALL
+      SELECT
+        NULL::uuid,
+        p.id,
+        COALESCE(p.rating_convidado, p.rating_habilidade, 3),
+        COALESCE(p.nome_convidado, 'Convidado')
+      FROM public.presencas p
+      WHERE p.jogo_id = p_jogo_id
+        AND p.confirmado = true
+        AND p.convidado = true
+        AND p.aprovado = true
+    ) sub
     ORDER BY rating DESC, random()
   LOOP
     INSERT INTO public.sorteio_times (jogo_id, patota_id, time_label, jogador_id, convidado_id, nome, rating)
