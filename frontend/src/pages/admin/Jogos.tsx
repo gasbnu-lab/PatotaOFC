@@ -26,7 +26,7 @@ type Participante = {
   presenca_id: string | null
 }
 
-type Estat = { gols: number; assistencias: number; gols_sofridos: number }
+type Estat = { gols: number; assistencias: number; gols_sofridos: number; canetas: number }
 
 type Form = {
   data: string
@@ -290,13 +290,13 @@ export default function Jogos() {
     if (jogIds.length > 0) {
       const { data: ejogs } = await supabase.from("jogo_estatisticas").select("*").eq("jogo_id", j.id).in("jogador_id", jogIds)
       for (const e of ejogs ?? []) {
-        mapaEstat[`j_${e.jogador_id}`] = { gols: e.gols, assistencias: e.assistencias, gols_sofridos: e.gols_sofridos }
+        mapaEstat[`j_${e.jogador_id}`] = { gols: e.gols, assistencias: e.assistencias, gols_sofridos: e.gols_sofridos, canetas: e.canetas ?? 0 }
       }
     }
     if (presIds.length > 0) {
       const { data: epres } = await supabase.from("jogo_estatisticas").select("*").eq("jogo_id", j.id).in("presenca_id", presIds)
       for (const e of epres ?? []) {
-        mapaEstat[`c_${e.presenca_id}`] = { gols: e.gols, assistencias: e.assistencias, gols_sofridos: e.gols_sofridos }
+        mapaEstat[`c_${e.presenca_id}`] = { gols: e.gols, assistencias: e.assistencias, gols_sofridos: e.gols_sofridos, canetas: e.canetas ?? 0 }
       }
     }
     setEstats(mapaEstat)
@@ -306,7 +306,7 @@ export default function Jogos() {
     if (!modalEstat) return
     setSalvandoEstat(true)
     for (const p of participantes) {
-      const e = estats[p.key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0 }
+      const e = estats[p.key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0, canetas: 0 }
       const payload = {
         jogo_id: modalEstat.id,
         jogador_id: p.jogador_id,
@@ -314,6 +314,7 @@ export default function Jogos() {
         gols: e.gols,
         assistencias: e.assistencias,
         gols_sofridos: e.gols_sofridos,
+        canetas: e.canetas,
       }
       if (p.jogador_id) {
         await supabase.from("jogo_estatisticas").upsert(payload, { onConflict: "jogo_id,jogador_id" })
@@ -326,7 +327,7 @@ export default function Jogos() {
   }
 
   function setEstatField(key: string, field: keyof Estat, val: number) {
-    setEstats(prev => ({ ...prev, [key]: { ...(prev[key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0 }), [field]: val } }))
+    setEstats(prev => ({ ...prev, [key]: { ...(prev[key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0, canetas: 0 }), [field]: val } }))
   }
 
   function fmtData(iso: string) {
@@ -538,18 +539,19 @@ export default function Jogos() {
                       <th style={{ textAlign: "center", padding: "0 0 0.5rem 0.4rem", fontWeight: 600 }}>⚽ Gols</th>
                       <th style={{ textAlign: "center", padding: "0 0 0.5rem 0.4rem", fontWeight: 600 }}>🅰️ Assist.</th>
                       <th style={{ textAlign: "center", padding: "0 0 0.5rem 0.4rem", fontWeight: 600 }}>🛡️ Sofridos</th>
+                      <th style={{ textAlign: "center", padding: "0 0 0.5rem 0.4rem", fontWeight: 600 }}>🥤 Canetas</th>
                     </tr>
                   </thead>
                   <tbody>
                     {participantes.map(p => {
-                      const e = estats[p.key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0 }
+                      const e = estats[p.key] ?? { gols: 0, assistencias: 0, gols_sofridos: 0, canetas: 0 }
                       return (
                         <tr key={p.key} style={{ borderTop: "1px solid var(--border)" }}>
                           <td style={{ padding: "0.4rem 0", fontWeight: 500, color: "var(--text)" }}>
                             {p.nome}
                             {p.presenca_id && <span style={{ fontSize: "0.72rem", color: "var(--muted)", marginLeft: 4 }}>(conv.)</span>}
                           </td>
-                          {(["gols", "assistencias", "gols_sofridos"] as const).map(field => (
+                          {(["gols", "assistencias", "gols_sofridos", "canetas"] as const).map(field => (
                             <td key={field} style={{ textAlign: "center", padding: "0.4rem 0.4rem" }}>
                               <input
                                 type="number"
