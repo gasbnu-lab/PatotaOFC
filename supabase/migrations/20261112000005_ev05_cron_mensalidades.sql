@@ -7,9 +7,11 @@
 -- As migrations normais (via Supabase CLI) NÃO suportam cron.schedule().
 
 -- ── 1. Constraint única para suportar ON CONFLICT na geração ──────────────
-ALTER TABLE public.mensalidades
-  ADD CONSTRAINT IF NOT EXISTS mensalidades_jogador_mes_uniq
-    UNIQUE (jogador_id, mes_ref);
+DO $$ BEGIN
+  ALTER TABLE public.mensalidades
+    ADD CONSTRAINT mensalidades_jogador_mes_uniq UNIQUE (jogador_id, mes_ref);
+EXCEPTION WHEN duplicate_table THEN NULL;
+         WHEN duplicate_object THEN NULL; END $$;
 
 -- ── 2. Função de geração de mensalidades do mês atual ────────────────────
 CREATE OR REPLACE FUNCTION public.gerar_mensalidades_mes()
