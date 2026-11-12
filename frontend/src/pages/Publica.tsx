@@ -893,6 +893,35 @@ export default function Publica() {
               <div style={{ padding: "1rem", color: "var(--muted)", fontSize: "0.85rem" }}>Carregando...</div>
             ) : (
               <>
+                {/* Alerta de mensalidades atrasadas (exceto mês atual) */}
+                {(() => {
+                  const mesAtualStr = new Date().toISOString().slice(0, 7)
+                  const atrasadas = minhasMens.filter(m =>
+                    !m.pago &&
+                    m.mes_ref.slice(0, 7) < mesAtualStr &&
+                    statusMens(m.mes_ref, m.pago) === "atrasado"
+                  )
+                  if (atrasadas.length === 0) return null
+                  return (
+                    <div style={{ borderTop: "1px solid var(--border)", padding: "0.75rem 1rem", background: "#fef2f2", borderRadius: "0 0 0 0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.5rem" }}>
+                        <span style={{ fontSize: "1.1rem" }}>⚠️</span>
+                        <span style={{ fontWeight: 700, fontSize: "0.88rem", color: "#dc2626" }}>
+                          Você tem {atrasadas.length} mensalidade{atrasadas.length > 1 ? "s" : ""} atrasada{atrasadas.length > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                        {atrasadas.map(m => (
+                          <div key={m.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }}>
+                            <span style={{ color: "#b91c1c", fontWeight: 600 }}>{mesNome(m.mes_ref)}/{m.mes_ref.split("-")[0]}</span>
+                            <span style={{ color: "#b91c1c" }}>R$ {Number(m.valor).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+
                 {/* Mensalidades pessoais */}
                 {minhasMens.length > 0 && (
                   <div style={{ borderTop: "1px solid var(--border)", padding: "0.75rem 1rem" }}>

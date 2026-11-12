@@ -57,6 +57,8 @@ export default function Financeiro() {
   const [salvando, setSalvando] = useState(false)
   const [erroForm, setErroForm] = useState<string | null>(null)
   const formRef = useRef<HTMLDivElement>(null)
+  const [enviandoRelatorio, setEnviandoRelatorio] = useState(false)
+  const [msgRelatorio, setMsgRelatorio] = useState<{ ok: boolean; txt: string } | null>(null)
 
   useEffect(() => { carregar() }, [])
 
@@ -125,6 +127,23 @@ export default function Financeiro() {
     setLoading(false)
   }
 
+  async function enviarRelatorio() {
+    setEnviandoRelatorio(true)
+    setMsgRelatorio(null)
+    const hoje = new Date()
+    const mesRef = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`
+    const { data, error } = await supabase.functions.invoke("relatorio-mensal", {
+      body: { patota_id: usuario.patota_id, mes_ref: mesRef },
+    })
+    setEnviandoRelatorio(false)
+    if (error || data?.error) {
+      setMsgRelatorio({ ok: false, txt: `Erro: ${error?.message ?? data?.error}` })
+    } else {
+      setMsgRelatorio({ ok: true, txt: `✅ Relatório enviado para ${(data.destinatarios as string[]).join(", ")}` })
+    }
+    setTimeout(() => setMsgRelatorio(null), 6000)
+  }
+
   async function inserirLancamento(e: React.FormEvent) {
     e.preventDefault()
     setErroForm(null)
@@ -166,10 +185,24 @@ export default function Financeiro() {
           <div className={s.pageTitulo}>Financeiro</div>
           <div className={s.pageSubtitulo}>Extrato e resumo financeiro da patota</div>
         </div>
-        <button className={f.btnNovo} onClick={() => { setFormAberto(v => !v); setErroForm(null) }}>
-          {formAberto ? "✕ Cancelar" : "+ Novo lançamento"}
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            onClick={enviarRelatorio}
+            disabled={enviandoRelatorio}
+            style={{ padding: "0.45rem 0.9rem", fontSize: "0.82rem", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface2)", cursor: enviandoRelatorio ? "default" : "pointer", opacity: enviandoRelatorio ? 0.6 : 1 }}
+          >
+            {enviandoRelatorio ? "Enviando..." : "📧 Enviar relatório do mês"}
+          </button>
+          <button className={f.btnNovo} onClick={() => { setFormAberto(v => !v); setErroForm(null) }}>
+            {formAberto ? "✕ Cancelar" : "+ Novo lançamento"}
+          </button>
+        </div>
       </div>
+      {msgRelatorio && (
+        <div style={{ padding: "0.6rem 1rem", borderRadius: 8, fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.5rem", background: msgRelatorio.ok ? "#f0fdf4" : "#fef2f2", color: msgRelatorio.ok ? "#15803d" : "#dc2626", border: `1px solid ${msgRelatorio.ok ? "#bbf7d0" : "#fecaca"}` }}>
+          {msgRelatorio.txt}
+        </div>
+      )}
 
       {/* Formulário novo lançamento */}
       {formAberto && (
