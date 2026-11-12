@@ -173,8 +173,11 @@ export default function Publica() {
       supabase.from("jogo_estatisticas").select("gols, assistencias, gols_sofridos, canetas, jogos!inner(patota_id)").eq("jogador_id", jogadorId).eq("jogos.patota_id", pid),
     ])
     setMinhasMens((mens ?? []) as MinhaMensalidade[])
-    const presRows = (pres ?? []) as unknown as { confirmado: boolean; jogos: { data: string }[] }[]
-    setMinhasPresencas(presRows.map(p => ({ jogo_data: p.jogos?.[0]?.data ?? "", confirmado: p.confirmado })))
+    const presRows = (pres ?? []) as unknown as { confirmado: boolean; jogos: { data: string } | { data: string }[] | null }[]
+    setMinhasPresencas(presRows.map(p => {
+      const jd = Array.isArray(p.jogos) ? p.jogos[0]?.data : (p.jogos as { data: string } | null)?.data
+      return { jogo_data: jd ?? "", confirmado: p.confirmado }
+    }))
     if (estat && estat.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const agg = (estat as any[]).reduce<MinhaEstat>(
