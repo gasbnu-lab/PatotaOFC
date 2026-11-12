@@ -289,11 +289,14 @@ export default function Jogos() {
     setEstats({})
 
     // Carrega confirmados (jogadores + convidados aprovados)
-    const { data: pres } = await supabase
+    const { data: pres, error: presError } = await supabase
       .from("presencas")
       .select("id, jogador_id, nome_convidado, convidado, aprovado, jogadores(nome)")
       .eq("jogo_id", j.id)
       .eq("confirmado", true)
+
+    if (presError) console.error("[abrirEstat] presencas error:", presError, "jogo_id:", j.id)
+    else console.log("[abrirEstat] presencas rows:", pres?.length ?? 0, "jogo_id:", j.id)
 
     const lista: Participante[] = []
     for (const p of pres ?? []) {
