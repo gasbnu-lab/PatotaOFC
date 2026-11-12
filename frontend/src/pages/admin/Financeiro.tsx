@@ -136,8 +136,16 @@ export default function Financeiro() {
       body: { patota_id: usuario.patota_id, mes_ref: mesRef },
     })
     setEnviandoRelatorio(false)
+    // Tenta extrair mensagem real do corpo da resposta
+    let errDetail = ""
+    if (error) {
+      try {
+        const ctx = await (error as { context?: Response }).context?.json?.()
+        errDetail = ctx?.error ?? ctx?.message ?? error.message
+      } catch { errDetail = error.message }
+    }
     if (error || data?.error) {
-      setMsgRelatorio({ ok: false, txt: `Erro: ${error?.message ?? data?.error}` })
+      setMsgRelatorio({ ok: false, txt: `Erro: ${errDetail || data?.error}` })
     } else {
       setMsgRelatorio({ ok: true, txt: `✅ Relatório enviado para ${(data.destinatarios as string[]).join(", ")}` })
     }
