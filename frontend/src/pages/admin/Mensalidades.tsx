@@ -42,6 +42,8 @@ export default function Mensalidades() {
   const [paginaMens, setPaginaMens] = useState(0)
   const [temMaisMens, setTemMaisMens] = useState(false)
   const [carregandoMaisMens, setCarregandoMaisMens] = useState(false)
+  const [mesSelecionado, setMesSelecionado] = useState<string>("")
+  const [filtroStatus, setFiltroStatus] = useState<"todos" | "pendente" | "atrasado" | "pago">("todos")
 
   // form nova mensalidade (avulsa)
   const [modal, setModal] = useState(false)
@@ -83,6 +85,11 @@ export default function Mensalidades() {
       .range(0, PAGE_MENS - 1)
     setMens(data ?? [])
     setTemMaisMens((data?.length ?? 0) === PAGE_MENS)
+    // Seleciona o mês mais recente por padrão
+    if (data && data.length > 0) {
+      const maisRecente = [...new Set(data.map(m => m.mes_ref))].sort().reverse()[0]
+      setMesSelecionado(maisRecente)
+    }
     setLoading(false)
   }
 
@@ -231,6 +238,19 @@ export default function Mensalidades() {
   }
 
   const meses = [...new Set(mens.map(m => m.mes_ref))].sort().reverse()
+  const idxSel = meses.indexOf(mesSelecionado)
+  const doMesSel = mens.filter(m => m.mes_ref === mesSelecionado)
+  const statusCount = {
+    pago: doMesSel.filter(m => m.pago).length,
+    pendente: doMesSel.filter(m => !m.pago && statusMens(m.mes_ref, m.pago) === "pendente").length,
+    atrasado: doMesSel.filter(m => !m.pago && statusMens(m.mes_ref, m.pago) === "atrasado").length,
+  }
+  const linhasFiltradas = doMesSel
+    .filter(m => {
+      if (filtroStatus === "todos") return true
+      return statusMens(m.mes_ref, m.pago) === filtroStatus
+    })
+    .sort((a, b) => (a.jogadores?.nome ?? "").localeCompare(b.jogadores?.nome ?? "", "pt-BR"))
 
   if (loading) return <div className={s.page}><div className={s.empty}>Carregando...</div></div>
 
@@ -256,101 +276,128 @@ export default function Mensalidades() {
       {meses.length === 0 ? (
         <div className={s.card}><div className={s.empty}>Nenhuma mensalidade cadastrada.</div></div>
       ) : (
-        meses.map(mes => {
-          const doMes = mens.filter(m => m.mes_ref === mes)
-          const pendentes = doMes
-            .filter(m => !m.pago)
-            .sort((a, b) => (a.jogadores?.nome ?? "").localeCompare(b.jogadores?.nome ?? "", "pt-BR"))
-          const pagos = doMes
-            .filter(m => m.pago)
-            .sort((a, b) => (a.jogadores?.nome ?? "").localeCompare(b.jogadores?.nome ?? "", "pt-BR"))
+        <div className={s.card}>
+          {/* Navegação de meses */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.75rem 1rem", borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
+            <button
+              className={s.btnSecondary}
+              style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", minWidth: 32 }}
+              disabled={idxSel >= meses.length - 1}
+              onClick={() => { setMesSelecionado(meses[idxSel + 1]); setFiltroStatus("todos") }}
+            >‹</button>
 
-          const renderLinha = (m: Mensalidade) => {
-            const st = statusMens(m.mes_ref, m.pago)
-            return (
-              <tr key={m.id}>
-                <td style={{ fontWeight: 500, color: "var(--text)" }}>
-                  {m.jogadores?.nome ?? "—"}
-                </td>
-                <td>
-                  <span className={s[`badge${st.charAt(0).toUpperCase() + st.slice(1)}`]}>
-                    {st === "pago" ? "PAGO" : st === "atrasado" ? "ATRASADO" : "PENDENTE"}
-                  </span>
-                </td>
-                <td>
-                  <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
-                    <button
-                      className={s.btnSecondary}
-                      style={{ padding: "0.3rem 0.8rem", fontSize: "0.78rem" }}
-                      disabled={atualizando === m.id}
-                      onClick={() => togglePago(m)}
-                    >
-                      {m.pago ? "Desmarcar" : "Marcar pago"}
-                    </button>
-                    {confirmDelId === m.id ? (
-                      <>
-                        <button onClick={() => excluir(m)} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
-                          Confirmar
-                        </button>
-                        <button className={s.btnSecondary} style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }} onClick={() => setConfirmDelId(null)}>✕</button>
-                      </>
-                    ) : (
-                      <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", color: "#dc2626" }} onClick={() => setConfirmDelId(m.id)}>
-                        Excluir
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            )
-          }
-
-          return (
-            <div key={mes} className={s.card} style={{ marginBottom: "1rem" }}>
-              <div className={s.cardPad} style={{ paddingBottom: "0.5rem" }}>
-                <div className={s.cardTitulo} style={{ textTransform: "capitalize" }}>
+            <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", flex: 1 }}>
+              {meses.map(mes => (
+                <button
+                  key={mes}
+                  onClick={() => { setMesSelecionado(mes); setFiltroStatus("todos") }}
+                  style={{
+                    padding: "0.3rem 0.7rem",
+                    fontSize: "0.8rem",
+                    borderRadius: 6,
+                    border: "1px solid",
+                    cursor: "pointer",
+                    fontWeight: mes === mesSelecionado ? 700 : 400,
+                    borderColor: mes === mesSelecionado ? "var(--accent, #0f3460)" : "var(--border)",
+                    background: mes === mesSelecionado ? "var(--accent, #0f3460)" : "transparent",
+                    color: mes === mesSelecionado ? "#fff" : "var(--text)",
+                    textTransform: "capitalize",
+                  }}
+                >
                   {mesNome(mes)}
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "var(--mens-cols, 1fr 1fr)", gap: "0", borderTop: "1px solid var(--border)" }}
-                className="mensGrid">
-                {/* Coluna esquerda: pendentes + atrasados */}
-                <div style={{ borderRight: "1px solid var(--border)", overflowX: "auto" }}>
-                  <div style={{ padding: "0.4rem 1rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", background: "var(--surface2, #f9fafb)" }}>
-                    Pendentes / Atrasados ({pendentes.length})
-                  </div>
-                  {pendentes.length === 0 ? (
-                    <div style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "var(--muted)" }}>Nenhum</div>
-                  ) : (
-                    <table className={s.table} style={{ borderTop: "1px solid var(--border)" }}>
-                      <tbody>{pendentes.map(renderLinha)}</tbody>
-                    </table>
-                  )}
-                </div>
-                {/* Coluna direita: pagos */}
-                <div style={{ overflowX: "auto" }}>
-                  <div style={{ padding: "0.4rem 1rem", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted)", background: "var(--surface2, #f9fafb)" }}>
-                    Pagos ({pagos.length})
-                  </div>
-                  {pagos.length === 0 ? (
-                    <div style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "var(--muted)" }}>Nenhum</div>
-                  ) : (
-                    <table className={s.table} style={{ borderTop: "1px solid var(--border)" }}>
-                      <tbody>{pagos.map(renderLinha)}</tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
+                </button>
+              ))}
+              {temMaisMens && (
+                <button className={s.btnSecondary} onClick={carregarMaisMens} disabled={carregandoMaisMens} style={{ padding: "0.3rem 0.7rem", fontSize: "0.8rem" }}>
+                  {carregandoMaisMens ? "..." : "+ meses"}
+                </button>
+              )}
             </div>
-          )
-        })
-      )}
 
-      {temMaisMens && (
-        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-          <button className={s.btnSecondary} onClick={carregarMaisMens} disabled={carregandoMaisMens} style={{ padding: "0.4rem 1.2rem", fontSize: "0.85rem" }}>
-            {carregandoMaisMens ? "Carregando..." : "Carregar mais meses"}
-          </button>
+            <button
+              className={s.btnSecondary}
+              style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", minWidth: 32 }}
+              disabled={idxSel <= 0}
+              onClick={() => { setMesSelecionado(meses[idxSel - 1]); setFiltroStatus("todos") }}
+            >›</button>
+          </div>
+
+          {/* Filtros de status */}
+          <div style={{ display: "flex", gap: "0.4rem", padding: "0.6rem 1rem", borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
+            {([
+              { v: "todos", label: `Todos (${doMesSel.length})` },
+              { v: "pendente", label: `Pendentes (${statusCount.pendente})` },
+              { v: "atrasado", label: `Atrasados (${statusCount.atrasado})` },
+              { v: "pago", label: `Pagos (${statusCount.pago})` },
+            ] as const).map(op => (
+              <button
+                key={op.v}
+                onClick={() => setFiltroStatus(op.v)}
+                style={{
+                  padding: "0.25rem 0.65rem",
+                  fontSize: "0.78rem",
+                  borderRadius: 20,
+                  border: "1px solid",
+                  cursor: "pointer",
+                  fontWeight: filtroStatus === op.v ? 600 : 400,
+                  borderColor: filtroStatus === op.v ? "var(--accent, #0f3460)" : "var(--border)",
+                  background: filtroStatus === op.v ? "var(--accent, #0f3460)" : "transparent",
+                  color: filtroStatus === op.v ? "#fff" : "var(--text)",
+                }}
+              >
+                {op.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tabela do mês */}
+          {linhasFiltradas.length === 0 ? (
+            <div className={s.empty} style={{ padding: "1.5rem" }}>Nenhum resultado.</div>
+          ) : (
+            <table className={s.table}>
+              <tbody>
+                {linhasFiltradas.map(m => {
+                  const st = statusMens(m.mes_ref, m.pago)
+                  return (
+                    <tr key={m.id}>
+                      <td style={{ fontWeight: 500, color: "var(--text)" }}>
+                        {m.jogadores?.nome ?? "—"}
+                      </td>
+                      <td>
+                        <span className={s[`badge${st.charAt(0).toUpperCase() + st.slice(1)}`]}>
+                          {st === "pago" ? "PAGO" : st === "atrasado" ? "ATRASADO" : "PENDENTE"}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end" }}>
+                          <button
+                            className={s.btnSecondary}
+                            style={{ padding: "0.3rem 0.8rem", fontSize: "0.78rem" }}
+                            disabled={atualizando === m.id}
+                            onClick={() => togglePago(m)}
+                          >
+                            {atualizando === m.id ? "..." : m.pago ? "Desmarcar" : "Marcar pago"}
+                          </button>
+                          {confirmDelId === m.id ? (
+                            <>
+                              <button onClick={() => excluir(m)} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700 }}>
+                                Confirmar
+                              </button>
+                              <button className={s.btnSecondary} style={{ padding: "0.3rem 0.5rem", fontSize: "0.78rem" }} onClick={() => setConfirmDelId(null)}>✕</button>
+                            </>
+                          ) : (
+                            <button className={s.btnSecondary} style={{ padding: "0.3rem 0.7rem", fontSize: "0.78rem", color: "#dc2626" }} onClick={() => setConfirmDelId(m.id)}>
+                              Excluir
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
