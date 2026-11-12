@@ -27,7 +27,7 @@ BEGIN
     'relatorio-mensal-dia-1',
     '30 6 1 * *',
     format(
-      $$
+      $cmd$
       SELECT net.http_post(
         url     := %L,
         headers := jsonb_build_object(
@@ -37,7 +37,7 @@ BEGIN
         body    := jsonb_build_object('patota_id', id)
       )
       FROM public.patota;
-      $$,
+      $cmd$,
       v_base_url,
       v_cron_secret
     )
